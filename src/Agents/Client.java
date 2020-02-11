@@ -1,23 +1,26 @@
 package Agents;
 
+import Behaviours.ClientBehaviours;
 import Utilities.Order;
+import jade.core.AID;
 import jade.core.Agent;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 
+import java.awt.*;
+
 public class Client extends Agent {
 
 
     int timeout;
     Order order;
-
+    AID company;
+    ClientBehaviours manager;
 
     @Override
     protected void setup() {
-        super.setup();
-
 
         Object[] args = getArguments();
         if (args != null && args.length == 3) {
@@ -34,6 +37,8 @@ public class Client extends Agent {
             return;
         }
 
+        manager = new ClientBehaviours(this);
+
         // Registration with the DF
         DFAgentDescription dfd = new DFAgentDescription();
         ServiceDescription sd = new ServiceDescription();
@@ -46,10 +51,41 @@ public class Client extends Agent {
         try {
             DFService.register(this, dfd);
 
+            // find Company
+            DFAgentDescription template = new DFAgentDescription();
+            ServiceDescription serviceTemplate = new ServiceDescription();
+            serviceTemplate.setType("Company");
+            template.addServices(serviceTemplate);
+            this.company = DFService.search(this, template)[1].getName();
+
+
+            addBehaviour(manager.new Request());
+            addBehaviour(manager.new WaitOrder());
         } catch (FIPAException e) {
             System.out.println("Error on registering Client " + getName());
             doDelete();
         }
+
+    }
+
+    @Override
+    protected void takeDown() {
+        try {
+            DFService.deregister(this);
+        }
+        catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
+
+        System.out.println("Client " + getName() + " is being deleted");
+    }
+
+    public Order getOrder() {
+        return order;
+    }
+
+    public AID getCompany() {
+        return company;
     }
 }
 

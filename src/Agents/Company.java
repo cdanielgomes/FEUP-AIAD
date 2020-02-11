@@ -1,5 +1,6 @@
 package Agents;
 
+import Behaviours.CompanyBehaviours;
 import Utilities.Order;
 import jade.core.AID;
 import jade.core.Agent;
@@ -13,13 +14,13 @@ import java.util.Vector;
 
 public class Company  extends Agent {
 
-    private Vector<AID> Workers = new Vector<>();
-    private Hashtable<Order, Vector<AID>> OrdersTasked = new Hashtable<>();
-
+    private Vector<AID> workers = new Vector<>();
+    private Hashtable<AID, Vector<Order>> ordersTask = new Hashtable<>();
+    private int cash = 0;
+    private CompanyBehaviours manager;
 
     @Override
     protected void setup() {
-        super.setup();
 
         // Registration with the DF
         DFAgentDescription dfd = new DFAgentDescription();
@@ -33,9 +34,62 @@ public class Company  extends Agent {
         try {
             DFService.register(this,dfd);
 
+            manager = new CompanyBehaviours(this);
+
+
         } catch (FIPAException e) {
 
             doDelete();
         }
+    }
+
+
+    public void addWorker (AID worker){
+        workers.add(worker);
+    }
+
+    public boolean addOrder(AID worker, Order order) {
+       try{
+
+           Vector<Order> o = ordersTask.get(worker);
+           o.add(order);
+           ordersTask.put(worker, o);
+
+       } catch (NullPointerException e){
+            System.out.println("Something wrong passing args order and worker");
+            return  false;
+       }
+
+
+        return true;
+    }
+
+
+    public void removeWorker(AID worker){
+        workers.remove(worker); /// TODO see if it works without matching
+    }
+
+    public Vector<AID> getWorkers() {
+        return workers;
+    }
+
+    public void setWorkers(Vector<AID> workers) {
+        this.workers = workers;
+    }
+
+    public Hashtable<AID, Vector<Order>> getOrdersTasked() {
+        return ordersTask;
+    }
+
+    public void setOrdersTasked(Hashtable<AID, Vector<Order>> ordersTasked) {
+        this.ordersTask = ordersTasked;
+    }
+
+    public int getCash() {
+        return cash;
+    }
+
+    public void setCash(int cash) {
+        this.cash = cash;
     }
 }
