@@ -17,7 +17,7 @@ public class Worker extends Agent {
     private int rate = 0;
     private int workingTime = 0;
     private int capacityUsed = 0;
-    private LinkedBlockingQueue<Order> orders =  new LinkedBlockingQueue<>();
+    private LinkedBlockingQueue<Order> orders = new LinkedBlockingQueue<>();
     private AID company = null;
     private WorkersBehaviours manager = new WorkersBehaviours(this);
 
@@ -26,14 +26,13 @@ public class Worker extends Agent {
     protected void setup() {
 
         Object[] args = getArguments();
-        if (args != null && args.length == 3) {
-            this.capacity = (int) args[0]; // work that it can handle
-            this.rate = (int) args[1]; // work rate - work per time unit
+        if (args != null && args.length == 2) {
+            this.capacity = Integer.parseInt((String) args[0]) ; // work that it can handle
+            this.rate = Integer.parseInt((String) args[1]); // work rate - work per time unit
 
-        }
-        else {
+        } else {
             doDelete();
-            return ;
+            return;
         }
 
         // Registration with the DF
@@ -42,19 +41,20 @@ public class Worker extends Agent {
         sd.setType("worker");
         sd.setName(getName());
         sd.setOwnership("FEUPCER");
+        System.out.println(getAID());
         dfd.setName(getAID());
         dfd.addServices(sd);
 
         try {
             DFService.register(this, dfd);
-
+            System.out.println("Register Worker");
             // find Company
             DFAgentDescription template = new DFAgentDescription();
             ServiceDescription serviceTemplate = new ServiceDescription();
             serviceTemplate.setType("Company");
             template.addServices(serviceTemplate);
-            this.company = DFService.search(this, template)[1].getName();
-
+            this.company = DFService.search(this, template)[0].getName();
+            System.out.println(this.company);
             addBehaviour(manager.new StartWork());
 
         } catch (FIPAException e) {
@@ -63,13 +63,12 @@ public class Worker extends Agent {
         }
 
 
-
     }
 
 
     @Override
     protected void takeDown() {
-        super.takeDown();
+
         try {
             DFService.deregister(this);
             System.out.println("Shutting down Worker " + getName());
@@ -82,7 +81,7 @@ public class Worker extends Agent {
         return capacity;
     }
 
-    public void addOrder(Order o){
+    public void addOrder(Order o) {
         orders.add(o);
     }
 

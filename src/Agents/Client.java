@@ -27,7 +27,7 @@ public class Client extends Agent {
 
             this.timeout = Integer.parseInt((String) args[0]);
             int quantity = Integer.parseInt((String) args[1]);
-            int payment = Integer.parseInt((String) args[2]);
+            double payment = Integer.parseInt((String) args[2]);
 
             this.order = new Order(getAID(), quantity, timeout, payment);
         }
@@ -56,7 +56,7 @@ public class Client extends Agent {
             ServiceDescription serviceTemplate = new ServiceDescription();
             serviceTemplate.setType("Company");
             template.addServices(serviceTemplate);
-            this.company = DFService.search(this, template)[1].getName();
+            this.company = DFService.search(this, template)[0].getName();
 
 
             addBehaviour(manager.new Request());

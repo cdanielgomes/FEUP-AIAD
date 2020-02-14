@@ -10,10 +10,10 @@ public class Order implements Serializable {
     private final AID aid;
     private int quantity;
     private final long timeout;
-    private final int payment;
+    private final double payment;
     private boolean done = false;
 
-    public Order(AID aid, int quantity, int timeout, int payment) {
+    public Order(AID aid, int quantity, int timeout, double payment) {
         this.aid = aid;
         this.quantity = quantity;
         this.timeout = timeout;
@@ -36,7 +36,7 @@ public class Order implements Serializable {
         return timeout;
     }
 
-    public int getPayment() {
+    public double getPayment() {
         return payment;
     }
 

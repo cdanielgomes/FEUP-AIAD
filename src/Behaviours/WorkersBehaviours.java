@@ -36,14 +36,16 @@ public class WorkersBehaviours {
             msg.addReceiver(worker.getCompany());
             msg.setContent("worker");
             worker.send(msg);
+            worker.addBehaviour(new GetWork());
         }
     }
 
 
     public class GetWork extends ContractNetResponder {
 
-        public GetWork(MessageTemplate mt) {
-            super(worker, mt);
+        public GetWork() {
+            super(worker, null);
+
 
         }
 

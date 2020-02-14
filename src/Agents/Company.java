@@ -12,11 +12,11 @@ import jade.domain.FIPAException;
 import java.util.Hashtable;
 import java.util.Vector;
 
-public class Company  extends Agent {
+public class Company extends Agent {
 
     private Vector<AID> workers = new Vector<>();
     private Hashtable<AID, Vector<Order>> ordersTask = new Hashtable<>();
-    private int cash = 0;
+    private double cash = 0;
     private CompanyBehaviours manager;
 
     @Override
@@ -32,40 +32,47 @@ public class Company  extends Agent {
         dfd.addServices(sd);
 
         try {
-            DFService.register(this,dfd);
+            DFService.register(this, dfd);
+            System.out.println("Registered");
 
             manager = new CompanyBehaviours(this);
 
+            addBehaviour(manager.new ReceiveRequests());
+
+            addBehaviour(manager.new ReceiveWorkers());
 
         } catch (FIPAException e) {
 
-            doDelete();
+            System.out.println("LIGGGGGGGMMMMMMMMAAAAAAAAAAA");
+           // doDelete();
         }
     }
 
 
-    public void addWorker (AID worker){
+    public void addWorker(AID worker) {
         workers.add(worker);
     }
 
     public boolean addOrder(AID worker, Order order) {
-       try{
+        try {
 
-           Vector<Order> o = ordersTask.get(worker);
-           o.add(order);
-           ordersTask.put(worker, o);
+            Vector<Order> o = ordersTask.get(worker);
+            o.add(order);
+            ordersTask.put(worker, o);
 
-       } catch (NullPointerException e){
+        } catch (NullPointerException e) {
             System.out.println("Something wrong passing args order and worker");
-            return  false;
-       }
-
-
+            return false;
+        }
         return true;
     }
 
+    public void receivePayment(Order o) {
+        cash += o.getPayment();
+    }
 
-    public void removeWorker(AID worker){
+
+    public void removeWorker(AID worker) {
         workers.remove(worker); /// TODO see if it works without matching
     }
 
@@ -85,7 +92,7 @@ public class Company  extends Agent {
         this.ordersTask = ordersTasked;
     }
 
-    public int getCash() {
+    public double getCash() {
         return cash;
     }
 

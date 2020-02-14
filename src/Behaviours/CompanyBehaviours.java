@@ -36,11 +36,11 @@ public class CompanyBehaviours {
             ACLMessage msg = company.receive(template);
 
             if (msg != null) {
+                System.out.println("New Message");
                 if (msg.getContent().equals("worker")) company.addWorker(msg.getSender());
             } else {
                 block();
             }
-
         }
     }
 
@@ -62,14 +62,21 @@ public class CompanyBehaviours {
                     case ACLMessage.CFP:
                         try {
                             Order o = (Order) msg.getContentObject();
-                            company.addBehaviour(new AssignWork(o));
+
+                            company.addBehaviour(new AssignWork(o, new ACLMessage(ACLMessage.CFP)));
 
                         } catch (UnreadableException e) {
                             e.printStackTrace();
                         }
                         break;
                     case ACLMessage.CONFIRM:
+                        try {
+                            Order o = (Order) msg.getContentObject();
+                            company.receivePayment(o);
 
+                        } catch (UnreadableException e) {
+                            e.printStackTrace();
+                        }
 
                     case ACLMessage.CANCEL:
                         // send message to Worker Telling to stop doing its work and be available again
@@ -88,16 +95,19 @@ public class CompanyBehaviours {
 
         Order order = null;
 
-        public AssignWork(Order order) {
-            super(company, null);
+        public AssignWork(Order order, ACLMessage cfp) {
+            super(company, cfp);
             this.order = order;
         }
 
         @Override
         protected Vector prepareCfps(ACLMessage cfp) {
+
+            System.out.println(cfp);
             for (AID k : company.getWorkers()) {
                 cfp.addReceiver(k);
             }
+
             cfp.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
             cfp.setPerformative(ACLMessage.CFP);
 
@@ -136,6 +146,9 @@ public class CompanyBehaviours {
                                 offer = (ACLMessage) i;
                                 workerOffer = w;
                             }
+                        } else if(workerOffer.isWorking() && !w.isWorking()){
+                            offer = (ACLMessage) i;
+                            workerOffer = w;
                         }
                     } catch (UnreadableException e) {
                         e.printStackTrace();
@@ -149,12 +162,14 @@ public class CompanyBehaviours {
                 reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
                 try {
                     reply.setContentObject(order);
+                    acceptances.add(reply);
+
+                    company.addOrder(offer.getSender(), order);
                 } catch (IOException e) {
                     e.printStackTrace();
-                }
-                acceptances.add(reply);
 
-                company.addOrder(offer.getSender(), order);
+                }
+
             } else {
                 // TODO send cancels para parar negociação
                 //  E DAR HANDLE A TODAS AS CONSEQUENCIAS
