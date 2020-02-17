@@ -13,6 +13,7 @@ import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 import jade.proto.ContractNetInitiator;
 
+import java.awt.desktop.ScreenSleepEvent;
 import java.io.IOException;
 import java.util.PriorityQueue;
 import java.util.Vector;
@@ -36,7 +37,6 @@ public class CompanyBehaviours {
             ACLMessage msg = company.receive(template);
 
             if (msg != null) {
-                System.out.println("New Message");
                 if (msg.getContent().equals("worker")) company.addWorker(msg.getSender());
             } else {
                 block();
@@ -103,7 +103,7 @@ public class CompanyBehaviours {
         @Override
         protected Vector prepareCfps(ACLMessage cfp) {
 
-            System.out.println(cfp);
+
             for (AID k : company.getWorkers()) {
                 cfp.addReceiver(k);
             }
@@ -129,13 +129,15 @@ public class CompanyBehaviours {
             ACLMessage offer = null;
             WorkerOffer workerOffer = null;
 
+
+
             for (Object i : responses) {
                 if (((ACLMessage) i).getPerformative() == ACLMessage.PROPOSE) {
 
                     try {
                         WorkerOffer w = (WorkerOffer) ((ACLMessage) i).getContentObject();
 
-                        if (w.isFull() || w.getCapacity() >= order.getQuantity()) continue;
+                        if (w.isFull() || w.getCapacity() <= order.getQuantity()) continue;
                         if (workerOffer == null) {
                             offer = (ACLMessage) i;
                             workerOffer = w;
@@ -146,7 +148,7 @@ public class CompanyBehaviours {
                                 offer = (ACLMessage) i;
                                 workerOffer = w;
                             }
-                        } else if(workerOffer.isWorking() && !w.isWorking()){
+                        } else if (workerOffer.isWorking() && !w.isWorking()) {
                             offer = (ACLMessage) i;
                             workerOffer = w;
                         }
@@ -163,7 +165,6 @@ public class CompanyBehaviours {
                 try {
                     reply.setContentObject(order);
                     acceptances.add(reply);
-
                     company.addOrder(offer.getSender(), order);
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -171,6 +172,8 @@ public class CompanyBehaviours {
                 }
 
             } else {
+
+                System.out.println("Offer is null");
                 // TODO send cancels para parar negociação
                 //  E DAR HANDLE A TODAS AS CONSEQUENCIAS
                 //  DE NAO SE CONSEGUIR DAR HANDLE

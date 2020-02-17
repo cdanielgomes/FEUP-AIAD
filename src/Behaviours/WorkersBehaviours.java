@@ -2,6 +2,7 @@ package Behaviours;
 
 import Agents.Worker;
 import Utilities.Order;
+import Utilities.Utils;
 import Utilities.WorkerOffer;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
@@ -37,6 +38,7 @@ public class WorkersBehaviours {
             msg.setContent("worker");
             worker.send(msg);
             worker.addBehaviour(new GetWork());
+            worker.addBehaviour(new DoMyJob());
         }
     }
 
@@ -46,7 +48,6 @@ public class WorkersBehaviours {
         public GetWork() {
             super(worker, null);
 
-
         }
 
         @Override
@@ -55,7 +56,7 @@ public class WorkersBehaviours {
 
             try {
                 Order o = (Order) cfp.getContentObject();
-                if(worker.getCapacity() < o.getQuantity() || worker.isFull()) {
+                if (worker.getCapacity() < o.getQuantity() || worker.isFull()) {
                     reply.setPerformative(ACLMessage.REFUSE);
 
                 } else {
@@ -65,6 +66,9 @@ public class WorkersBehaviours {
             } catch (UnreadableException | IOException e) {
                 e.printStackTrace();
             }
+
+            Utils.print(String.valueOf(reply.getPerformative()));
+
             return reply;
         }
 
@@ -74,7 +78,7 @@ public class WorkersBehaviours {
 
             try {
                 worker.addOrder((Order) cfp.getContentObject());
-
+                Utils.print("ADDED JOB to " + worker.getName());
             } catch (UnreadableException e) {
                 e.printStackTrace();
             }
@@ -95,23 +99,26 @@ public class WorkersBehaviours {
 
         @Override
         protected void onTick() {
-            if (currentOrder != null){
-                currentOrder.decreaseQt(worker.getRate());
 
-                if(currentOrder.getQuantity() <= 0){
+            currentOrder = currentOrder == null ? worker.getOrders().poll() : currentOrder;
+
+            if (currentOrder != null) {
+                currentOrder.decreaseQt(worker.getRate());
+                Utils.print("Doing job " + worker.getName());
+
+                if (currentOrder.getQuantity() <= 0) {
+                    Utils.print("Job done");
                     ACLMessage l = new ACLMessage(ACLMessage.INFORM); // inform?
                     try {
                         l.setContentObject(currentOrder);
                         l.addReceiver(worker.getCompany());
                         worker.send(l);
+
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
 
                     currentOrder = null;
-                }else {
-                    currentOrder = worker.getOrders().poll();
-
                 }
             }
         }

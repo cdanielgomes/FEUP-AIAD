@@ -2,6 +2,7 @@ package Agents;
 
 import Behaviours.CompanyBehaviours;
 import Utilities.Order;
+import Utilities.Utils;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.domain.DFService;
@@ -33,7 +34,6 @@ public class Company extends Agent {
 
         try {
             DFService.register(this, dfd);
-            System.out.println("Registered");
 
             manager = new CompanyBehaviours(this);
 
@@ -51,6 +51,7 @@ public class Company extends Agent {
 
     public void addWorker(AID worker) {
         workers.add(worker);
+        ordersTask.put(worker, new Vector<Order>());
     }
 
     public boolean addOrder(AID worker, Order order) {

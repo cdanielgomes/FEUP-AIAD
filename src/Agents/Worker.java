@@ -2,6 +2,7 @@ package Agents;
 
 import Behaviours.WorkersBehaviours;
 import Utilities.Order;
+import Utilities.Utils;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.domain.DFService;
@@ -41,20 +42,19 @@ public class Worker extends Agent {
         sd.setType("worker");
         sd.setName(getName());
         sd.setOwnership("FEUPCER");
-        System.out.println(getAID());
+
         dfd.setName(getAID());
         dfd.addServices(sd);
 
         try {
             DFService.register(this, dfd);
-            System.out.println("Register Worker");
             // find Company
             DFAgentDescription template = new DFAgentDescription();
             ServiceDescription serviceTemplate = new ServiceDescription();
             serviceTemplate.setType("Company");
             template.addServices(serviceTemplate);
             this.company = DFService.search(this, template)[0].getName();
-            System.out.println(this.company);
+
             addBehaviour(manager.new StartWork());
 
         } catch (FIPAException e) {
