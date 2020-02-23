@@ -18,6 +18,7 @@ public class Worker extends Agent {
     private int rate = 0;
     private int workingTime = 0;
     private int capacityUsed = 0;
+    private Order currentOrder = null;
     private LinkedBlockingQueue<Order> orders = new LinkedBlockingQueue<>();
     private AID company = null;
     private WorkersBehaviours manager = new WorkersBehaviours(this);
@@ -101,8 +102,8 @@ public class Worker extends Agent {
         return workingTime;
     }
 
-    public void setWorkingTime(int workingTime) {
-        this.workingTime = workingTime;
+    public void increaseTime() {
+        this.workingTime += 1;
     }
 
     public int getCapacityUsed() {
@@ -131,6 +132,14 @@ public class Worker extends Agent {
 
     public boolean isFull() {
         return orders.size() == 3;
+    }
+
+    public Order getCurrentOrder() {
+        return currentOrder;
+    }
+
+    public void setCurrentOrder(Order currentOrder) {
+        this.currentOrder = currentOrder;
     }
 }
 

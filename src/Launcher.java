@@ -59,7 +59,7 @@ public class Launcher {
     public static void generateAgents() throws InterruptedException {
 
         Random rand = new Random();
-        Object[] compArgs = {};
+        Object[] compArgs = {1200 + "", "" + 2 , "" + 10};
 
         // create company
 
@@ -87,7 +87,7 @@ public class Launcher {
             int quantity = rand.nextInt(5000 - 500) + 500;
             double payment = 1.5 * quantity;
 
-            Object[] args = {time + "", "" + quantity, quantity + ""};
+            Object[] args = {time + "", "" + quantity, payment + ""};
 
             createAgent("client" + i, "Client", args);
 

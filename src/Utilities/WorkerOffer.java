@@ -18,7 +18,7 @@ public class WorkerOffer implements Serializable {
         this.capacity = w.getCapacity();
         this.rate = w.getRate();
         this.workingTime = w.getWorkingTime();
-        this.working = w.getOrders().size() > 0;
+        this.working = w.getCurrentOrder() != null;
         this.full = w.isFull();
         this.nOrders = w.getOrders().size();
     }

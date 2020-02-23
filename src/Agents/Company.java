@@ -9,8 +9,10 @@ import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
+import jade.lang.acl.ACLMessage;
 
 import java.util.Hashtable;
+import java.util.Set;
 import java.util.Vector;
 
 public class Company extends Agent {
@@ -18,11 +20,29 @@ public class Company extends Agent {
     private Vector<AID> workers = new Vector<>();
     private Hashtable<AID, Vector<Order>> ordersTask = new Hashtable<>();
     private double cash = 0;
+    private double lostCash = 0;
+    private double payments = 0;
+    private double payment = 0;
+    private int[] rangeEmployees = {0,0};
     private CompanyBehaviours manager;
 
     @Override
     protected void setup() {
 
+        Object[] args = getArguments();
+        System.out.println(args.length);
+        if (args != null && args.length == 3) {
+            try {
+                this.payment = Double.parseDouble((String) args[0]); // work that it can handle
+                this.rangeEmployees[0] = Integer.parseInt((String) args[1]);
+                this.rangeEmployees[1] = Integer.parseInt((String) args[2]);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        } else {
+            doDelete();
+            return;
+        }
         // Registration with the DF
         DFAgentDescription dfd = new DFAgentDescription();
         ServiceDescription sd = new ServiceDescription();
@@ -40,23 +60,49 @@ public class Company extends Agent {
             addBehaviour(manager.new ReceiveRequests());
 
             addBehaviour(manager.new ReceiveWorkers());
+            addBehaviour(manager.new WarnClients());
+
 
         } catch (FIPAException e) {
 
             System.out.println("LIGGGGGGGMMMMMMMMAAAAAAAAAAA");
-           // doDelete();
+            // doDelete();
         }
     }
 
 
     public void addWorker(AID worker) {
         workers.add(worker);
-        ordersTask.put(worker, new Vector<Order>());
+        ordersTask.put(worker, new Vector<>());
+    }
+
+    public AID removeOrder(Order order) {
+
+        try {
+            Set<AID> workers = ordersTask.keySet();
+
+            for (AID worker : workers) {
+                Vector<Order> orders = ordersTask.get(worker);
+
+                for (Order o : orders) {
+                    if (o.getAid().equals(order.getAid())) {
+                        System.out.println("First " + orders.size());
+                        orders.remove(o);
+                        System.out.println("Second " + orders.size());
+                        ordersTask.put(worker, orders);
+                        return worker;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     public boolean addOrder(AID worker, Order order) {
         try {
-
             Vector<Order> o = ordersTask.get(worker);
             o.add(order);
             ordersTask.put(worker, o);
@@ -72,9 +118,31 @@ public class Company extends Agent {
         cash += o.getPayment();
     }
 
+    public void lostPayment(Order o) {
+        lostCash += o.getPayment();
+    }
 
-    public void removeWorker(AID worker) {
-        workers.remove(worker); /// TODO see if it works without matching
+    public boolean removeWorker(AID worker) {
+        try {
+            if (workers.size() > rangeEmployees[0]) {
+                System.out.println(workers.size());
+                this.workers.remove(worker); /// TODO see if it works without matching
+                Vector<Order> orders = this.ordersTask.get(worker);
+                if (orders.size() > 0) {
+                    for (Order o : orders) {
+                        addBehaviour(manager.new AssignWork(o, new ACLMessage(ACLMessage.CFP)));
+                    }
+
+                    ordersTask.remove(worker);
+                }
+                System.out.println(workers.size());
+            } else return false;
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+
     }
 
     public Vector<AID> getWorkers() {
@@ -99,5 +167,18 @@ public class Company extends Agent {
 
     public void setCash(int cash) {
         this.cash = cash;
+    }
+
+    public double getPayment(){
+        return payment;
+    }
+
+    public void payEmployees(int nEmployees) {
+        this.cash -= nEmployees * this.payment;
+        this.payments += nEmployees * this.payment;
+    }
+
+    public int[] getRangeEmployees(){
+        return this.rangeEmployees;
     }
 }

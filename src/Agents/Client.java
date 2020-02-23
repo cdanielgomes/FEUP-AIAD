@@ -27,7 +27,7 @@ public class Client extends Agent {
 
             this.timeout = Integer.parseInt((String) args[0]);
             int quantity = Integer.parseInt((String) args[1]);
-            double payment = Integer.parseInt((String) args[2]);
+            double payment = Double.parseDouble((String) args[2]);
 
             this.order = new Order(getAID(), quantity, timeout, payment);
         }

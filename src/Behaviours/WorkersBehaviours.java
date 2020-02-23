@@ -7,6 +7,7 @@ import Utilities.WorkerOffer;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
+import jade.core.behaviours.ReceiverBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.FIPAAgentManagement.FailureException;
 import jade.domain.FIPAAgentManagement.NotUnderstoodException;
@@ -22,7 +23,6 @@ import java.io.IOException;
 public class WorkersBehaviours {
 
     private Worker worker;
-    Order currentOrder = null;
 
     public WorkersBehaviours(Agent worker) {
         this.worker = (Worker) worker;
@@ -37,25 +37,45 @@ public class WorkersBehaviours {
             msg.addReceiver(worker.getCompany());
             msg.setContent("worker");
             worker.send(msg);
-            worker.addBehaviour(new GetWork());
+            MessageTemplate template = MessageTemplate.and(
+                    MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
+                    MessageTemplate.MatchPerformative(ACLMessage.CFP));
+
+            worker.addBehaviour(new GetWork(template));
             worker.addBehaviour(new DoMyJob());
+            worker.addBehaviour(new Fired());
+        }
+    }
+
+    public class Fired extends CyclicBehaviour{
+
+        @Override
+        public void action() {
+            MessageTemplate tmp = MessageTemplate.MatchPerformative(ACLMessage.CANCEL);
+
+            ACLMessage msg = worker.receive(tmp);
+            if(msg != null){
+                worker.doDelete();
+            } else block();
         }
     }
 
 
     public class GetWork extends ContractNetResponder {
 
-        public GetWork() {
-            super(worker, null);
+        public GetWork(MessageTemplate template) {
+            super(worker, template);
 
         }
 
         @Override
         protected ACLMessage handleCfp(ACLMessage cfp) throws RefuseException, FailureException, NotUnderstoodException {
-            ACLMessage reply = cfp.createReply();
-
+            ACLMessage reply = null;
             try {
+                reply = cfp.createReply();
+
                 Order o = (Order) cfp.getContentObject();
+
                 if (worker.getCapacity() < o.getQuantity() || worker.isFull()) {
                     reply.setPerformative(ACLMessage.REFUSE);
 
@@ -64,10 +84,9 @@ public class WorkersBehaviours {
                     reply.setContentObject(new WorkerOffer(worker));
                 }
             } catch (UnreadableException | IOException e) {
+                Utils.print("ERROR TRYING WORK ANSWER");
                 e.printStackTrace();
             }
-
-            Utils.print(String.valueOf(reply.getPerformative()));
 
             return reply;
         }
@@ -100,25 +119,30 @@ public class WorkersBehaviours {
         @Override
         protected void onTick() {
 
-            currentOrder = currentOrder == null ? worker.getOrders().poll() : currentOrder;
+            if (worker.getCurrentOrder() == null) {
+                worker.setCurrentOrder(worker.getOrders().poll());
+            }
+
+            Order currentOrder = worker.getCurrentOrder();
+            // currentOrder = currentOrder == null ? worker.getOrders().poll() : currentOrder;
 
             if (currentOrder != null) {
                 currentOrder.decreaseQt(worker.getRate());
-                Utils.print("Doing job " + worker.getName());
-
+                worker.setCurrentOrder(currentOrder);
+                worker.increaseTime();
                 if (currentOrder.getQuantity() <= 0) {
-                    Utils.print("Job done");
-                    ACLMessage l = new ACLMessage(ACLMessage.INFORM); // inform?
+
+                    ACLMessage l = new ACLMessage(ACLMessage.REQUEST); // inform?
                     try {
                         l.setContentObject(currentOrder);
+
                         l.addReceiver(worker.getCompany());
                         worker.send(l);
-
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
 
-                    currentOrder = null;
+                    worker.setCurrentOrder(null);
                 }
             }
         }
