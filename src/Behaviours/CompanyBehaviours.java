@@ -96,11 +96,6 @@ public class CompanyBehaviours {
                     case ACLMessage.CFP:
                         try {
                             Order o = (Order) msg.getContentObject();
-                            Utils.print("Quantidade " + o.getQuantity());
-                            Utils.print("Payment " + o.getPayment());
-                            Utils.print("Timeout " + o.getTimeout());
-
-
                             company.addBehaviour(new AssignWork(o, new ACLMessage(ACLMessage.CFP)));
 
                         } catch (UnreadableException e) {
@@ -128,7 +123,6 @@ public class CompanyBehaviours {
                             new_msg.addReceiver(company.removeOrder(o));
                             company.send(new_msg);
                             return;
-
 
                         } catch (UnreadableException e) {
                             e.printStackTrace();
@@ -290,6 +284,8 @@ public class CompanyBehaviours {
                     System.out.println("Removed Worker cause no money to him");
                 }
             }
+            Utils.printCompany(company);
+
         }
     }
 

@@ -62,6 +62,7 @@ public class Company extends Agent {
             addBehaviour(manager.new ReceiveWorkers());
             addBehaviour(manager.new WarnClients());
 
+            addBehaviour(manager. new PayEmployees(30*1000, this.payment));
 
         } catch (FIPAException e) {
 

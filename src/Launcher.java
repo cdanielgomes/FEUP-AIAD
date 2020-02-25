@@ -18,9 +18,25 @@ public class Launcher {
 
     public static void main(String[] args) throws InterruptedException, StaleProxyException {
 
+
+        int type = Integer.parseInt(args[0]);
         createJade();
 
-        generateAgents();
+        switch (type){
+
+            case 0:
+                break;
+            case 1:
+                break;
+            case 2:
+                break;
+            case 3:
+                break;
+            default:
+                generateAgents();
+                break;
+        }
+
 
     }
 
@@ -59,7 +75,7 @@ public class Launcher {
     public static void generateAgents() throws InterruptedException {
 
         Random rand = new Random();
-        Object[] compArgs = {1200 + "", "" + 2 , "" + 10};
+        Object[] compArgs = {1200 + "", "" + 2, "" + 10};
 
         // create company
 

@@ -74,9 +74,15 @@ public class ClientBehaviours {
 
             ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
             msg.setContent("im going away");
-            msg.addReceiver(client.getCompany());
-            client.send(msg);            // send message that is canceling the order and leaves
-            client.doDelete();
+            try {
+                msg.setContentObject(client.getOrder());
+                msg.addReceiver(client.getCompany());
+                client.send(msg);            // send message that is canceling the order and leaves
+                client.doDelete();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
         }
     }
 
@@ -92,7 +98,7 @@ public class ClientBehaviours {
             if (receive != null) {
 
 
-                if(receive.getPerformative() == ACLMessage.INFORM) {
+                if (receive.getPerformative() == ACLMessage.INFORM) {
 
                 }
 
