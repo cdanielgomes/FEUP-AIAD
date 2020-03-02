@@ -1,1 +1,1 @@
-http://DESKTOP-LDNKMPO.Home:7778/acc
+http://DESKTOP-LDNKMPO:7778/acc

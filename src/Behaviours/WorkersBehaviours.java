@@ -18,6 +18,7 @@ import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 import jade.proto.ContractNetResponder;
 
+import javax.swing.plaf.synth.SynthTextAreaUI;
 import java.io.IOException;
 
 public class WorkersBehaviours {
@@ -55,6 +56,7 @@ public class WorkersBehaviours {
 
             ACLMessage msg = worker.receive(tmp);
             if(msg != null){
+                System.out.println("PADEIIIIRRAAAA");
                 worker.doDelete();
             } else block();
         }

@@ -20,17 +20,19 @@ public class Launcher {
 
 
         int type = Integer.parseInt(args[0]);
+
         createJade();
 
-        switch (type){
+        switch (type) {
 
-            case 0:
-                break;
             case 1:
+                generateWorkersAndClientsLot();
                 break;
             case 2:
+                generateLotWorkersAndFewClients();
                 break;
             case 3:
+                generateFewWorkersAndLotClients();
                 break;
             default:
                 generateAgents();
@@ -75,6 +77,15 @@ public class Launcher {
     public static void generateAgents() throws InterruptedException {
 
         Random rand = new Random();
+
+        generateCompany();
+        generateWorkers(3);
+        generateClients(2);
+    }
+
+
+    public static void generateCompany() throws InterruptedException {
+
         Object[] compArgs = {1200 + "", "" + 2, "" + 10};
 
         // create company
@@ -83,7 +94,46 @@ public class Launcher {
 
         Thread.sleep(2000);
 
-        for (int i = 0; i < 3; i++) {
+    }
+
+    public static void generateWorkersAndClientsLot() throws InterruptedException {
+
+        generateCompany();
+        Thread.sleep(2000);
+
+        generateWorkers(7);
+
+        generateClients(25);
+
+    }
+
+
+    public static void generateLotWorkersAndFewClients() throws InterruptedException {
+
+        generateCompany();
+        Thread.sleep(2000);
+
+        generateWorkers(10);
+
+        generateClients(10);
+    }
+
+
+    public static void generateFewWorkersAndLotClients() throws InterruptedException {
+
+        generateCompany();
+        Thread.sleep(2000);
+
+        generateWorkers(4);
+
+        generateClients(25);
+    }
+
+
+    public static void generateWorkers(int maxWorkers) {
+        Random rand = new Random();
+
+        for (int i = 0; i < maxWorkers; i++) {
 
             int rate = rand.nextInt(200 - 99) + 99;
             int cap = rand.nextInt(8000 - 1000) + 1000;
@@ -91,24 +141,22 @@ public class Launcher {
             Object[] workArgs = {cap + "", rate + ""};
 
             createAgent("worker" + i, "Worker", workArgs);
-
-
         }
+    }
 
-        // create Clients
+    public static void generateClients(int clients) {
+        Random rand = new Random();
 
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < clients; i++) {
 
-            int time = rand.nextInt(30000 - 10000) + 10000;
+            int time = rand.nextInt(50000 - 25000) + 25000;
             int quantity = rand.nextInt(5000 - 500) + 500;
             double payment = 1.5 * quantity;
 
             Object[] args = {time + "", "" + quantity, payment + ""};
 
             createAgent("client" + i, "Client", args);
-
         }
     }
-
 
 }

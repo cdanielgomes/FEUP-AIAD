@@ -45,6 +45,7 @@ public class CompanyBehaviours {
             if (msg != null) {
                 if (msg.getContent().equals("worker")) company.addWorker(msg.getSender());
                 else {
+                    System.out.println(msg.getContent());
                 }
             } else {
                 block();
@@ -158,7 +159,7 @@ public class CompanyBehaviours {
 
             cfp.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
             cfp.setPerformative(ACLMessage.CFP);
-            cfp.setReplyByDate(new Date(System.currentTimeMillis() + 5000));
+            cfp.setReplyByDate(new Date(System.currentTimeMillis() + 7000));
 
             try {
                 cfp.setContentObject(order);
@@ -210,45 +211,28 @@ public class CompanyBehaviours {
             }
 
             if (offer != null) {
-                ACLMessage reply = offer.createReply();
-                reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
                 try {
+                    for (Object i : responses) {
+                        ACLMessage rp = ((ACLMessage) i).createReply();
 
-                    reply.setContentObject(order);
-                    acceptances.add(reply);
-                    company.addOrder(offer.getSender(), order);
+                        if (offer.equals(i)) {
+                            rp.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
+                            company.addOrder(offer.getSender(), order);
+                            rp.setContentObject(order);
+                        } else {
+                            rp.setPerformative(ACLMessage.REJECT_PROPOSAL);
+                        }
+                        acceptances.add(rp);
+
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
 
                 }
 
             } else {
-                try {
-                    // tell client that cant be done
-                    int numberEmp = company.getWorkers().size();
-                    if ((numberEmp + 1) * company.getPayment() < company.getCash() &&
-                            company.getRangeEmployees()[1] < numberEmp) {
-
-                        Random rand = new Random();
-                        int rate = rand.nextInt(200 - 99) + 99;
-                        int cap = rand.nextInt(8000 - 1000) + 1000;
-
-                        ContainerController cc = company.getContainerController();
-                        AgentController ac = cc.createNewAgent("worker" + company.getWorkers().size(),
-                                "Agents.Worker", new Object[]{cap + "", rate + ""});
-
-                        ac.start();
-                    }
-                } catch (StaleProxyException e) {
-                    e.printStackTrace();
-                }
+              //  if(!createWorker()) ;
             }
-            // hire worker ? how
-
-            System.out.println("OFFERING NULL STUFF");
-            // TODO send cancels para parar negociação
-            //  E DAR HANDLE A TODAS AS CONSEQUENCIAS
-            //  DE NAO SE CONSEGUIR DAR HANDLE
         }
     }
 
@@ -286,6 +270,33 @@ public class CompanyBehaviours {
             }
             Utils.printCompany(company);
 
+        }
+    }
+
+
+     public boolean createWorker() {
+        try {
+            int numberEmp = company.getWorkers().size();
+            Utils.print(String.valueOf(numberEmp));
+
+            if (company.getRangeEmployees()[1] > numberEmp) {
+
+                System.out.println("TRY HIRE STUFF");
+                Random rand = new Random();
+                int rate = rand.nextInt(200 - 99) + 99;
+                int cap = rand.nextInt(8000 - 1000) + 1000;
+
+                ContainerController cc = company.getContainerController();
+                AgentController ac = cc.createNewAgent("worker" + (numberEmp + 1),
+                        "Agents.Worker", new Object[]{cap + "", rate + ""});
+
+                ac.start();
+            }
+            return true;
+        } catch (Exception e) {
+
+           // e.printStackTrace();
+            return false;
         }
     }
 

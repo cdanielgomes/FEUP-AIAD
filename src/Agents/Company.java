@@ -30,7 +30,7 @@ public class Company extends Agent {
     protected void setup() {
 
         Object[] args = getArguments();
-        System.out.println(args.length);
+
         if (args != null && args.length == 3) {
             try {
                 this.payment = Double.parseDouble((String) args[0]); // work that it can handle
@@ -66,7 +66,7 @@ public class Company extends Agent {
 
         } catch (FIPAException e) {
 
-            System.out.println("LIGGGGGGGMMMMMMMMAAAAAAAAAAA");
+            System.out.println("Error Registering Company");
             // doDelete();
         }
     }
@@ -87,9 +87,9 @@ public class Company extends Agent {
 
                 for (Order o : orders) {
                     if (o.getAid().equals(order.getAid())) {
-                        System.out.println("First " + orders.size());
+
                         orders.remove(o);
-                        System.out.println("Second " + orders.size());
+
                         ordersTask.put(worker, orders);
                         return worker;
                     }
@@ -126,7 +126,7 @@ public class Company extends Agent {
     public boolean removeWorker(AID worker) {
         try {
             if (workers.size() > rangeEmployees[0]) {
-                System.out.println(workers.size());
+
                 this.workers.remove(worker); /// TODO see if it works without matching
                 Vector<Order> orders = this.ordersTask.get(worker);
                 if (orders.size() > 0) {
@@ -136,7 +136,7 @@ public class Company extends Agent {
 
                     ordersTask.remove(worker);
                 }
-                System.out.println(workers.size());
+
             } else return false;
             return true;
         } catch (Exception e) {

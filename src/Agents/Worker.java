@@ -72,7 +72,7 @@ public class Worker extends Agent {
 
         try {
             DFService.deregister(this);
-            System.out.println("Shutting down Worker " + getName());
+            System.out.println("    Shutting down Worker " + getName());
         } catch (FIPAException e) {
             e.printStackTrace();
         }
