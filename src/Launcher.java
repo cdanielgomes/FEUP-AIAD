@@ -126,7 +126,7 @@ public class Launcher {
 
         generateWorkers(4);
 
-        generateClients(25);
+        generateClients(15);
     }
 
 

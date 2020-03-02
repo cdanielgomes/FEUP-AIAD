@@ -48,16 +48,26 @@ public class WorkersBehaviours {
         }
     }
 
-    public class Fired extends CyclicBehaviour{
+    public class Fired extends CyclicBehaviour {
 
         @Override
         public void action() {
             MessageTemplate tmp = MessageTemplate.MatchPerformative(ACLMessage.CANCEL);
+            MessageTemplate with_inform = MessageTemplate.or(tmp, MessageTemplate.MatchPerformative(ACLMessage.INFORM));
 
-            ACLMessage msg = worker.receive(tmp);
-            if(msg != null){
-                System.out.println("PADEIIIIRRAAAA");
-                worker.doDelete();
+            ACLMessage msg = worker.receive(with_inform);
+            if (msg != null) {
+                if (msg.getPerformative() == ACLMessage.CANCEL) {
+                    worker.doDelete();
+                } else {
+                    try {
+                        Order o = (Order) msg.getContentObject();
+
+                        worker.deleteOrder(o);
+                    } catch (UnreadableException e) {
+                        e.printStackTrace();
+                    }
+                }
             } else block();
         }
     }

@@ -116,16 +116,20 @@ public class CompanyBehaviours {
                         }
 
                     case ACLMessage.CANCEL:
-                        ACLMessage new_msg = new ACLMessage(ACLMessage.CANCEL);
+                        ACLMessage new_msg = new ACLMessage(ACLMessage.INFORM);
 
                         try {
+
+                            Utils.print("got canceled");
                             Order o = (Order) msg.getContentObject();
 
+                            new_msg.setContent("Cancel Order");
+                            new_msg.setContentObject(o);
                             new_msg.addReceiver(company.removeOrder(o));
                             company.send(new_msg);
                             return;
 
-                        } catch (UnreadableException e) {
+                        } catch (UnreadableException | IOException e) {
                             e.printStackTrace();
                         }
                         break;
@@ -248,8 +252,11 @@ public class CompanyBehaviours {
         @Override
         protected void onTick() {
             company.payEmployees(company.getWorkers().size());
-            if (company.getCash() < 0 && company.getWorkers().size() > company.getRangeEmployees()[0]) {
 
+            if (company.getCash() < 0 && company.getWorkers().size() > company.getRangeEmployees()[0]) {
+               Utils.print(company.getCash() + " <- Cash");
+               Utils.print(company.getWorkers().size() + " <- Number of Workers");
+               Utils.print(company.getRangeEmployees()[0] + " <-  Minimum of Workers");
                 Vector<AID> workers = company.getWorkers();
                 Vector<Integer> sizes = new Vector<>();
 
@@ -261,13 +268,16 @@ public class CompanyBehaviours {
                 for (int i = 0; i < sizes.size(); i++) {
                     worker = sizes.get(worker) > sizes.get(i) ? i : worker;
                 }
+
                 if (company.removeWorker(workers.get(worker))) {
+
                     ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
                     msg.addReceiver(workers.get(worker));
                     company.send(msg);
                     System.out.println("Removed Worker cause no money to him");
                 }
             }
+            Utils.print("Company configs: ");
             Utils.printCompany(company);
 
         }

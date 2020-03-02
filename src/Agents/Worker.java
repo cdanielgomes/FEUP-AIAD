@@ -86,6 +86,14 @@ public class Worker extends Agent {
         orders.add(o);
     }
 
+    public boolean deleteOrder(Order o) {
+        if(o.getAid().equals(currentOrder.getAid())){
+            currentOrder = null;
+            return true;
+        }
+        else return orders.remove(o);
+    }
+
     public void setCapacity(int capacity) {
         this.capacity = capacity;
     }
