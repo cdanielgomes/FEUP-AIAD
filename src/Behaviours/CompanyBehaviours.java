@@ -121,6 +121,7 @@ public class CompanyBehaviours {
                         try {
 
                             Utils.print("got canceled");
+                            Utils.print(msg.getSender().getName());
                             Order o = (Order) msg.getContentObject();
 
                             new_msg.setContent("Cancel Order");
@@ -235,6 +236,8 @@ public class CompanyBehaviours {
                 }
 
             } else {
+
+                Utils.print("NO workers");
               //  if(!createWorker()) ;
             }
         }
@@ -253,26 +256,31 @@ public class CompanyBehaviours {
         protected void onTick() {
             company.payEmployees(company.getWorkers().size());
 
-            if (company.getCash() < 0 && company.getWorkers().size() > company.getRangeEmployees()[0]) {
+            double pay = company.getWorkers().size()*company.getPayment();
+
+            if (company.getCash() < pay && company.getWorkers().size() > company.getRangeEmployees()[0]) {
                Utils.print(company.getCash() + " <- Cash");
                Utils.print(company.getWorkers().size() + " <- Number of Workers");
                Utils.print(company.getRangeEmployees()[0] + " <-  Minimum of Workers");
                 Vector<AID> workers = company.getWorkers();
                 Vector<Integer> sizes = new Vector<>();
+                AID worker = workers.get(0);
+                int nOrders = company.getOrdersTasked().get(worker).size();
 
                 for (AID w : workers) {
-                    sizes.add(company.getOrdersTasked().get(w).size());
+
+                    int size = company.getOrdersTasked().get(w).size();
+
+                    if(size < nOrders){
+                        worker = w;
+                        nOrders = size;
+                    }
                 }
 
-                int worker = 0;
-                for (int i = 0; i < sizes.size(); i++) {
-                    worker = sizes.get(worker) > sizes.get(i) ? i : worker;
-                }
-
-                if (company.removeWorker(workers.get(worker))) {
+                if (company.removeWorker(worker)) {
 
                     ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
-                    msg.addReceiver(workers.get(worker));
+                    msg.addReceiver(worker);
                     company.send(msg);
                     System.out.println("Removed Worker cause no money to him");
                 }

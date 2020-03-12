@@ -22,7 +22,7 @@ public class Utils {
         Hashtable<AID, Vector<Order>> g = comp.getOrdersTasked();
         Set<AID> keys = g.keySet();
         for (AID key : keys){
-       //     System.out.println("AID: " + key + "; " + g.get(key).size());
+            System.out.println("AID: " + key.getName() + "; " + g.get(key).size());
         }
 
     }

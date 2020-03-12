@@ -29,7 +29,7 @@ public class Worker extends Agent {
 
         Object[] args = getArguments();
         if (args != null && args.length == 2) {
-            this.capacity = Integer.parseInt((String) args[0]) ; // work that it can handle
+            this.capacity = Integer.parseInt((String) args[0]); // work that it can handle
             this.rate = Integer.parseInt((String) args[1]); // work rate - work per time unit
 
         } else {
@@ -87,11 +87,14 @@ public class Worker extends Agent {
     }
 
     public boolean deleteOrder(Order o) {
-        if(o.getAid().equals(currentOrder.getAid())){
-            currentOrder = null;
-            return true;
+        if (currentOrder != null) {
+            if (o.getAid().equals(currentOrder.getAid())) {
+                currentOrder = null;
+                return true;
+            }
         }
-        else return orders.remove(o);
+
+        return orders.remove(o);
     }
 
     public void setCapacity(int capacity) {

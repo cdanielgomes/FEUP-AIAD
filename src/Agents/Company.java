@@ -23,7 +23,7 @@ public class Company extends Agent {
     private double lostCash = 0;
     private double payments = 0;
     private double payment = 0;
-    private int[] rangeEmployees = {0,0};
+    private int[] rangeEmployees = {0, 0};
     private CompanyBehaviours manager;
 
     @Override
@@ -36,7 +36,7 @@ public class Company extends Agent {
                 this.payment = Double.parseDouble((String) args[0]); // work that it can handle
                 this.rangeEmployees[0] = Integer.parseInt((String) args[1]);
                 this.rangeEmployees[1] = Integer.parseInt((String) args[2]);
-            }catch (Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         } else {
@@ -62,7 +62,7 @@ public class Company extends Agent {
             addBehaviour(manager.new ReceiveWorkers());
             addBehaviour(manager.new WarnClients());
 
-            addBehaviour(manager. new PayEmployees(30*1000, this.payment));
+            addBehaviour(manager.new PayEmployees(30 * 1000, this.payment));
 
         } catch (FIPAException e) {
 
@@ -81,16 +81,22 @@ public class Company extends Agent {
 
         try {
             Set<AID> workers = ordersTask.keySet();
-
+            Utils.print("tenho que ENCONTRAR " + order.getAid().getName());
             for (AID worker : workers) {
                 Vector<Order> orders = ordersTask.get(worker);
 
+                Utils.print("NO WORKER " + worker.getName());
+
                 for (Order o : orders) {
+
+                    Utils.print("ORDER " + o.getAid().getName());
+
                     if (o.getAid().equals(order.getAid())) {
 
                         orders.remove(o);
 
                         ordersTask.put(worker, orders);
+                        Utils.print("Worker");
                         return worker;
                     }
                 }
@@ -98,6 +104,8 @@ public class Company extends Agent {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        Utils.print("null");
 
         return null;
     }
@@ -127,16 +135,18 @@ public class Company extends Agent {
         try {
             if (workers.size() > rangeEmployees[0]) {
 
-                this.workers.remove(worker); /// TODO see if it works without matching
-                Vector<Order> orders = this.ordersTask.get(worker);
-                if (orders.size() > 0) {
-                    for (Order o : orders) {
-                        addBehaviour(manager.new AssignWork(o, new ACLMessage(ACLMessage.CFP)));
+                if(this.workers.remove(worker)) {
+                    ; /// TODO see if it works without matching
+                    Vector<Order> orders = this.ordersTask.get(worker);
+                    if (orders.size() > 0) {
+                        for (Order o : orders) {
+                            addBehaviour(manager.new AssignWork(o, new ACLMessage(ACLMessage.CFP)));
+                        }
+
+                        Vector a = ordersTask.remove(worker);
+                        if(a!=null) Utils.print(a+"");
                     }
-
-                    ordersTask.remove(worker);
                 }
-
             } else return false;
             return true;
         } catch (Exception e) {
@@ -170,7 +180,7 @@ public class Company extends Agent {
         this.cash = cash;
     }
 
-    public double getPayment(){
+    public double getPayment() {
         return payment;
     }
 
@@ -179,7 +189,7 @@ public class Company extends Agent {
         this.payments += nEmployees * this.payment;
     }
 
-    public int[] getRangeEmployees(){
+    public int[] getRangeEmployees() {
         return this.rangeEmployees;
     }
 }
