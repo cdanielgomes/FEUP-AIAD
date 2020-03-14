@@ -16,6 +16,7 @@ import jade.proto.ContractNetInitiator;
 import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
 import jade.wrapper.StaleProxyException;
+import jdk.jshell.execution.Util;
 
 import java.io.IOException;
 import java.util.Date;
@@ -66,7 +67,7 @@ public class CompanyBehaviours {
                     Order l = (Order) msg.getContentObject();
                     ACLMessage m = new ACLMessage(ACLMessage.REQUEST);
                     m.addReceiver(l.getAid());
-                    company.removeOrder(l);
+                    company.removeOrder(l, false);
                     company.send(m);
                 } catch (UnreadableException e) {
                     e.printStackTrace();
@@ -108,25 +109,22 @@ public class CompanyBehaviours {
                             Order o = (Order) msg.getContentObject();
                             company.receivePayment(o);
 
-                            // TODO print company to check if it is working well
                             Utils.printCompany(company);
 
                         } catch (UnreadableException e) {
                             e.printStackTrace();
                         }
+                        break;
 
                     case ACLMessage.CANCEL:
                         ACLMessage new_msg = new ACLMessage(ACLMessage.INFORM);
-
                         try {
 
-                            Utils.print("got canceled");
-                            Utils.print(msg.getSender().getName());
                             Order o = (Order) msg.getContentObject();
-
+                            company.lostPayment(o);
                             new_msg.setContent("Cancel Order");
                             new_msg.setContentObject(o);
-                            new_msg.addReceiver(company.removeOrder(o));
+                            new_msg.addReceiver(company.removeOrder(o, true));
                             company.send(new_msg);
                             return;
 
@@ -236,9 +234,15 @@ public class CompanyBehaviours {
                 }
 
             } else {
-
-                Utils.print("NO workers");
-              //  if(!createWorker()) ;
+                Utils.print("Check added Worker");
+                if (company.isAddedWorker()) {
+                    Utils.print("Worker had to be added or waiting for one");
+                    company.addBehaviour(new AssignWork(order, new ACLMessage(ACLMessage.CFP)));
+                    company.removeBehaviour(this);
+                } else {
+                    Utils.print("Creating Worker");
+                    createWorker(order);
+                }
             }
         }
     }
@@ -256,12 +260,12 @@ public class CompanyBehaviours {
         protected void onTick() {
             company.payEmployees(company.getWorkers().size());
 
-            double pay = company.getWorkers().size()*company.getPayment();
+            double pay = company.getWorkers().size() * company.getPayment();
 
             if (company.getCash() < pay && company.getWorkers().size() > company.getRangeEmployees()[0]) {
-               Utils.print(company.getCash() + " <- Cash");
-               Utils.print(company.getWorkers().size() + " <- Number of Workers");
-               Utils.print(company.getRangeEmployees()[0] + " <-  Minimum of Workers");
+                Utils.print(company.getCash() + " <- Cash");
+                Utils.print(company.getWorkers().size() + " <- Number of Workers");
+                Utils.print(company.getRangeEmployees()[0] + " <-  Minimum of Workers");
                 Vector<AID> workers = company.getWorkers();
                 Vector<Integer> sizes = new Vector<>();
                 AID worker = workers.get(0);
@@ -271,7 +275,7 @@ public class CompanyBehaviours {
 
                     int size = company.getOrdersTasked().get(w).size();
 
-                    if(size < nOrders){
+                    if (size < nOrders) {
                         worker = w;
                         nOrders = size;
                     }
@@ -292,17 +296,37 @@ public class CompanyBehaviours {
     }
 
 
-     public boolean createWorker() {
+    public boolean createWorker(Order order) {
         try {
+            company.setAddedWorker(true);
+
+            // TODO important thing, keep guys optimal
+/*
+            Vector<AID> aids = company.getWorkers();
+
+            for (AID w : aids){
+                if(company.getOrdersTasked().get(w).size() == 0){
+                    if (company.removeWorker(w)) {
+                        ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
+                        msg.addReceiver(w);
+                        company.send(msg);
+                        System.out.println("Removed Worker cause is doing nothing");
+                        break;
+                    }
+                }
+            }*/
+
+
+
             int numberEmp = company.getWorkers().size();
             Utils.print(String.valueOf(numberEmp));
 
             if (company.getRangeEmployees()[1] > numberEmp) {
 
-                System.out.println("TRY HIRE STUFF");
+                System.out.println("TRY HIRE WORKER");
                 Random rand = new Random();
-                int rate = rand.nextInt(200 - 99) + 99;
-                int cap = rand.nextInt(8000 - 1000) + 1000;
+                int rate = rand.nextInt(600 - 300) + 300;
+                int cap = rand.nextInt(1000) + order.getQuantity();
 
                 ContainerController cc = company.getContainerController();
                 AgentController ac = cc.createNewAgent("worker" + (numberEmp + 1),
@@ -313,7 +337,7 @@ public class CompanyBehaviours {
             return true;
         } catch (Exception e) {
 
-           // e.printStackTrace();
+            // e.printStackTrace();
             return false;
         }
     }

@@ -6,7 +6,12 @@ import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
 import jade.wrapper.StaleProxyException;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 public class Launcher {
 
@@ -14,7 +19,7 @@ public class Launcher {
     private static jade.core.Runtime runtime;
     private static Profile profile;
     private static ContainerController mainContainer;
-
+    static int iClients = 1;
 
     public static void main(String[] args) throws InterruptedException, StaleProxyException {
 
@@ -34,6 +39,22 @@ public class Launcher {
             case 3:
                 generateFewWorkersAndLotClients();
                 break;
+            case 4:
+                iClients = 0;
+                generateFewWorkersAndLotClients();
+                createClientsRandomly(15, 30, 25, 0.2);
+                break;
+
+            case 5:
+                iClients = 0;
+                generateFewWorkersAndLotClients();
+                createClientsRandomly(25 , 40, 25, 1);
+                break;
+
+            case 6:
+                // create workers with low rate or capacity
+                break;
+
             default:
                 generateAgents();
                 break;
@@ -80,7 +101,7 @@ public class Launcher {
 
         generateCompany();
         generateWorkers(3);
-        generateClients(2);
+        generateClients(2,0, 1.5);
     }
 
 
@@ -96,6 +117,13 @@ public class Launcher {
 
     }
 
+    /**
+     * Generates 7 workers and 25 clients
+     * Enough clients to workers handle
+     *
+     * @throws InterruptedException
+     */
+
     public static void generateWorkersAndClientsLot() throws InterruptedException {
 
         generateCompany();
@@ -103,11 +131,17 @@ public class Launcher {
 
         generateWorkers(7);
 
-        generateClients(25);
+        generateClients(25, 0, 1.5);
 
     }
 
 
+    /**
+     * Generate 10 workers and 10 Clients
+     * Workers will get fired
+     *
+     * @throws InterruptedException
+     */
     public static void generateLotWorkersAndFewClients() throws InterruptedException {
 
         generateCompany();
@@ -115,10 +149,17 @@ public class Launcher {
 
         generateWorkers(10);
 
-        generateClients(10);
+        generateClients(10, 0, 1.5);
     }
 
 
+    /**
+     * Creates 4 workers and 25 clients
+     * <p>
+     * Will be created more workers by the program
+     *
+     * @throws InterruptedException
+     */
     public static void generateFewWorkersAndLotClients() throws InterruptedException {
 
         generateCompany();
@@ -126,7 +167,24 @@ public class Launcher {
 
         generateWorkers(4);
 
-        generateClients(15);
+        generateClients(25,0, 1.5);
+    }
+
+    /**
+     * Creates between 10 and 30 new Clients each x seconds after 20 seconds program's start
+     *
+     * @param seconds
+     */
+    public static void createClientsRandomly(int nMax, int seconds, int starter, double priceRate) {
+        ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+        executorService.scheduleAtFixedRate(() -> {
+                    Random n = new Random();
+                    int clients = n.nextInt(nMax - 10) + 10;
+                    generateClients(clients, starter+iClients, priceRate);
+                    iClients = clients;
+                }, 15, seconds, TimeUnit.SECONDS
+        );
+
     }
 
 
@@ -135,8 +193,8 @@ public class Launcher {
 
         for (int i = 0; i < maxWorkers; i++) {
 
-            int rate = rand.nextInt(200 - 99) + 99;
-            int cap = rand.nextInt(8000 - 1000) + 1000;
+            int rate = rand.nextInt(600 - 300) + 300;
+            int cap = rand.nextInt(8000 - 3000) + 3000;
 
             Object[] workArgs = {cap + "", rate + ""};
 
@@ -144,14 +202,14 @@ public class Launcher {
         }
     }
 
-    public static void generateClients(int clients) {
+    public static void generateClients(int clients, int starter, double priceRate) {
         Random rand = new Random();
 
-        for (int i = 0; i < clients; i++) {
+        for (int i = starter; i < clients + starter; i++) {
 
-            int time = rand.nextInt(50000 - 25000) + 25000;
+            int time = rand.nextInt(60000 - 40000) + 40000;
             int quantity = rand.nextInt(5000 - 500) + 500;
-            double payment = 1.5 * quantity;
+            double payment = priceRate * quantity;
 
             Object[] args = {time + "", "" + quantity, payment + ""};
 

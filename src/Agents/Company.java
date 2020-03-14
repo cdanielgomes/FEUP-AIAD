@@ -10,6 +10,7 @@ import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
+import jdk.jshell.execution.Util;
 
 import java.util.Hashtable;
 import java.util.Set;
@@ -25,6 +26,7 @@ public class Company extends Agent {
     private double payment = 0;
     private int[] rangeEmployees = {0, 0};
     private CompanyBehaviours manager;
+    private boolean addedWorker = false;
 
     @Override
     protected void setup() {
@@ -75,28 +77,28 @@ public class Company extends Agent {
     public void addWorker(AID worker) {
         workers.add(worker);
         ordersTask.put(worker, new Vector<>());
+        addedWorker = false;
     }
 
-    public AID removeOrder(Order order) {
+    public AID removeOrder(Order order, boolean cancelled) {
 
         try {
             Set<AID> workers = ordersTask.keySet();
-            Utils.print("tenho que ENCONTRAR " + order.getAid().getName());
+
             for (AID worker : workers) {
                 Vector<Order> orders = ordersTask.get(worker);
 
-                Utils.print("NO WORKER " + worker.getName());
-
                 for (Order o : orders) {
-
-                    Utils.print("ORDER " + o.getAid().getName());
 
                     if (o.getAid().equals(order.getAid())) {
 
                         orders.remove(o);
-
+                        if(cancelled) {
+                            Utils.print("Order removed " + o.getAid().getLocalName());
+                            Utils.print("Payment of  " + o.getPayment());
+                            Utils.print("Was on worker " + worker.getLocalName());
+                        }
                         ordersTask.put(worker, orders);
-                        Utils.print("Worker");
                         return worker;
                     }
                 }
@@ -104,8 +106,6 @@ public class Company extends Agent {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        Utils.print("null");
 
         return null;
     }
@@ -131,22 +131,25 @@ public class Company extends Agent {
         lostCash += o.getPayment();
     }
 
+    public double getLostCash() {
+        return lostCash;
+    }
+
     public boolean removeWorker(AID worker) {
         try {
             if (workers.size() > rangeEmployees[0]) {
 
-                if(this.workers.remove(worker)) {
-                    ; /// TODO see if it works without matching
+                if (this.workers.remove(worker)) {
+
                     Vector<Order> orders = this.ordersTask.get(worker);
                     if (orders.size() > 0) {
                         for (Order o : orders) {
                             addBehaviour(manager.new AssignWork(o, new ACLMessage(ACLMessage.CFP)));
                         }
-
-                        Vector a = ordersTask.remove(worker);
-                        if(a!=null) Utils.print(a+"");
                     }
-                }
+                    Vector a = ordersTask.remove(worker);
+
+                } else return false;
             } else return false;
             return true;
         } catch (Exception e) {
@@ -191,5 +194,13 @@ public class Company extends Agent {
 
     public int[] getRangeEmployees() {
         return this.rangeEmployees;
+    }
+
+    public boolean isAddedWorker() {
+        return addedWorker;
+    }
+
+    public void setAddedWorker(boolean addedWorker) {
+        this.addedWorker = addedWorker;
     }
 }

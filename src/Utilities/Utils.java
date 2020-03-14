@@ -16,8 +16,9 @@ public class Utils {
     public static void printCompany(Company comp) {
         System.out.println("COMPANY: ");
         System.out.println("\tCash: " + comp.getCash());
-        System.out.println("\t Number of Workers" + comp.getWorkers().size());
-        System.out.println("\t Size of tasks" + comp.getOrdersTasked().size());
+        System.out.println("\tLost Cash: " + comp.getLostCash());
+        System.out.println("\t Number of Workers is " + comp.getWorkers().size());
+        System.out.println("\t Size of tasks is " + comp.getOrdersTasked().size());
         System.out.println("\t\t WORKERS");
         Hashtable<AID, Vector<Order>> g = comp.getOrdersTasked();
         Set<AID> keys = g.keySet();
