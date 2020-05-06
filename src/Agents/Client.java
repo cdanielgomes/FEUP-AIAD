@@ -2,6 +2,7 @@ package Agents;
 
 import Behaviours.ClientBehaviours;
 import Utilities.Order;
+import Utilities.Utils.*;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.domain.DFService;
@@ -9,31 +10,27 @@ import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 
-import java.awt.*;
+import static Utilities.Utils.DAY_IN_MILLISECONDS;
+import static Utilities.Utils.MEDIUM_PIECES_DAY;
 
 public class Client extends Agent {
 
-
-    int timeout;
     Order order;
     AID company;
     ClientBehaviours manager;
+    TYPE_OF_CLIENT client = TYPE_OF_CLIENT.NORMAL;
 
     @Override
     protected void setup() {
 
         Object[] args = getArguments();
-        if (args != null && args.length == 3) {
+        if (args != null && args.length == 2) {
+            client = (TYPE_OF_CLIENT) args[0];
+            int quantity = (Integer) args[1];
+            this.order = calculateWaitingTime(quantity);
+        } else {
 
-            this.timeout = Integer.parseInt((String) args[0]);
-            int quantity = Integer.parseInt((String) args[1]);
-            double payment = Double.parseDouble((String) args[2]);
-
-            this.order = new Order(getAID(), quantity, timeout, payment);
-        }
-        else {
-
-            System.out.println("Fail Loading Client " + getName() );
+            System.out.println("Fail Loading Client " + getName());
             return;
         }
 
@@ -72,8 +69,7 @@ public class Client extends Agent {
     protected void takeDown() {
         try {
             DFService.deregister(this);
-        }
-        catch (FIPAException fe) {
+        } catch (FIPAException fe) {
             fe.printStackTrace();
         }
 
@@ -86,6 +82,29 @@ public class Client extends Agent {
 
     public AID getCompany() {
         return company;
+    }
+
+    private Order calculateWaitingTime(int quantity) {
+
+        int timeout = 0;
+        double payment = 1.5 * quantity;
+
+        switch (client) {
+            case NOPATIENT:
+                timeout = (int) Math.ceil(1.5 * quantity / MEDIUM_PIECES_DAY);
+                break;
+            case PATIENT:
+                timeout = (int) Math.ceil(3.3 * quantity / MEDIUM_PIECES_DAY);
+                break;
+            case NORMAL:
+                timeout = (int) Math.ceil(2.3 * quantity / MEDIUM_PIECES_DAY);
+                break;
+            default:
+                break;
+        }
+
+        timeout *=  DAY_IN_MILLISECONDS;
+        return new Order(getAID(), quantity, timeout, payment, client);
     }
 }
 

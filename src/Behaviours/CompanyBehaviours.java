@@ -1,6 +1,7 @@
 package Behaviours;
 
 import Agents.Company;
+import Agents.Worker;
 import Utilities.Order;
 import Utilities.Utils;
 import Utilities.WorkerOffer;
@@ -15,15 +16,11 @@ import jade.lang.acl.UnreadableException;
 import jade.proto.ContractNetInitiator;
 import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
-import jade.wrapper.StaleProxyException;
-import jdk.jshell.execution.Util;
 
 import java.io.IOException;
-import java.util.Date;
-import java.util.Random;
-import java.util.Set;
-import java.util.Vector;
-import java.util.function.BiConsumer;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 public class CompanyBehaviours {
 
@@ -44,9 +41,17 @@ public class CompanyBehaviours {
             ACLMessage msg = company.receive(template);
 
             if (msg != null) {
-                if (msg.getContent().equals("worker")) company.addWorker(msg.getSender());
-                else {
-                    System.out.println(msg.getContent());
+                try {
+
+                    String worker = msg.getContent().substring(0, "hired worker".length());
+                    int salary = Integer.parseInt(msg.getContent().substring("hired worker".length()));
+                    if (worker.equals("hired worker")) company.addWorker(msg.getSender(), salary);
+                    else {
+                        System.out.println(msg.getContent());
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             } else {
                 block();
@@ -146,7 +151,7 @@ public class CompanyBehaviours {
 
     public class AssignWork extends ContractNetInitiator {
 
-        Order order = null;
+        Order order;
 
         public AssignWork(Order order, ACLMessage cfp) {
             super(company, cfp);
@@ -156,13 +161,13 @@ public class CompanyBehaviours {
         @Override
         protected Vector prepareCfps(ACLMessage cfp) {
 
-            for (AID k : company.getWorkers()) {
-                cfp.addReceiver(k);
+            for (Enumeration<AID> workers = company.getWorkers().keys(); workers.hasMoreElements(); ) {
+                cfp.addReceiver(workers.nextElement());
             }
 
             cfp.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
             cfp.setPerformative(ACLMessage.CFP);
-            cfp.setReplyByDate(new Date(System.currentTimeMillis() + 7000));
+            cfp.setReplyByDate(new Date(System.currentTimeMillis() + 3000));
 
             try {
                 cfp.setContentObject(order);
@@ -178,40 +183,8 @@ public class CompanyBehaviours {
 
         @Override
         protected void handleAllResponses(Vector responses, Vector acceptances) {
+            ACLMessage offer = getWorkerAssigned(responses, order);
 
-            ACLMessage offer = null;
-            WorkerOffer workerOffer = null;
-
-            for (Object i : responses) {
-                if (((ACLMessage) i).getPerformative() == ACLMessage.PROPOSE) {
-
-                    try {
-                        WorkerOffer w = (WorkerOffer) ((ACLMessage) i).getContentObject();
-
-                        if (w.isFull() || w.getCapacity() <= order.getQuantity()) continue;
-                        if (workerOffer == null) {
-                            offer = (ACLMessage) i;
-                            workerOffer = w;
-                            continue;
-                        }
-                        if ((!w.isWorking() && !workerOffer.isWorking()) || (w.isWorking() && workerOffer.isWorking())) {
-                            if (workerOffer.getnOrders() > w.getnOrders()) {
-                                offer = (ACLMessage) i;
-                                workerOffer = w;
-                            } else if (workerOffer.getWorkingTime() > w.getWorkingTime()) {
-                                offer = (ACLMessage) i;
-                                workerOffer = w;
-                            }
-                        } else if (workerOffer.isWorking() && !w.isWorking()) {
-                            offer = (ACLMessage) i;
-                            workerOffer = w;
-                        }
-                    } catch (UnreadableException e) {
-                        e.printStackTrace();
-                    }
-
-                }
-            }
 
             if (offer != null) {
                 try {
@@ -245,38 +218,126 @@ public class CompanyBehaviours {
                 }
             }
         }
+
+        private ACLMessage getWorkerAssigned(Vector responses, Order order) {
+            ACLMessage offer = null;
+            WorkerOffer workerOffer = null;
+            Integer timeToStarThisOffer = null;
+            for (Object i : responses) {
+                if (((ACLMessage) i).getPerformative() == ACLMessage.PROPOSE) {
+
+                    try {
+                        WorkerOffer w = (WorkerOffer) ((ACLMessage) i).getContentObject();
+                        if (w.isFull()) continue;
+
+                        Integer time = calculateWaitingTime(((ACLMessage) i).getSender());
+
+                        // tudo o que passa aqui pode guardar e produzir
+                        // porem para otimizar os seguintes os pequenos devem fazer os trabalhos mais pequenos
+                        // os grandes devem fazer os trabalhos maiores
+
+                        if (time < order.getTimeout()) {
+                            if(offer == null){
+                                offer = (ACLMessage) i;
+                                workerOffer = w;
+                                timeToStarThisOffer = time;
+                                continue;
+                            }
+
+
+                            if (order.getType_of_client() == Utils.TYPE_OF_CLIENT.NOPATIENT) {
+                                if(w.getSalary() > workerOffer.getSalary()){
+                                        
+                                }
+
+                            } else if (order.getType_of_client() == Utils.TYPE_OF_CLIENT.NORMAL) {
+
+                            } else {
+
+                            }
+                        }
+
+
+                        /*
+                        if (w.isFull()) continue;
+                        if (workerOffer == null) {
+                            offer = (ACLMessage) i;
+                            workerOffer = w;
+                            continue;
+                        }
+                        if ((!w.isWorking() && !workerOffer.isWorking()) || (w.isWorking() && workerOffer.isWorking())) {
+                            if (workerOffer.getnOrders() > w.getnOrders()) {
+                                offer = (ACLMessage) i;
+                                workerOffer = w;
+                            } else if (workerOffer.getWorkingTime() > w.getWorkingTime()) {
+                                offer = (ACLMessage) i;
+                                workerOffer = w;
+                            }
+                        } else if (workerOffer.isWorking() && !w.isWorking()) {
+                            offer = (ACLMessage) i;
+                            workerOffer = w;
+                        }*/
+                    } catch (UnreadableException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+            }
+            return offer;
+        }
+
+        int calculateWaitingTime(AID worker) {
+            int sum = 0;
+
+            Integer c = company.getWorkers().get(worker);
+            int qt;
+            if (c == Utils.SALARY_OF_LAZY_WORKER) qt = Utils.RATE_OF_LAZY_WORKER;
+            else if (c == Utils.SALARY_OF_RENDER_WORKER) qt = Utils.RATE_OF_RENDER_WORKER;
+            else qt = Utils.RATE_OF_NORMAL_WORKER;
+
+            sum += order.getQuantity() * Utils.DAY_IN_MILLISECONDS / qt;
+
+            for (Order order : company.getOrdersTasked().get(worker)) {
+
+                sum += order.getQuantity() * Utils.DAY_IN_MILLISECONDS / qt;
+            }
+            return sum;
+        }
+
     }
 
     public class PayEmployees extends TickerBehaviour {
 
-        double payment;
-
-        public PayEmployees(long period, double payment) {
+        public PayEmployees(long period) {
             super(company, period);
-            this.payment = payment;
         }
 
         @Override
         protected void onTick() {
-            company.payEmployees(company.getWorkers().size());
 
-            double pay = company.getWorkers().size() * company.getPayment();
+            double pay = company.payEmployees();
+
 
             if (company.getCash() < pay && company.getWorkers().size() > company.getRangeEmployees()[0]) {
                 Utils.print(company.getCash() + " <- Cash");
                 Utils.print(company.getWorkers().size() + " <- Number of Workers");
                 Utils.print(company.getRangeEmployees()[0] + " <-  Minimum of Workers");
-                Vector<AID> workers = company.getWorkers();
-                Vector<Integer> sizes = new Vector<>();
-                AID worker = workers.get(0);
-                int nOrders = company.getOrdersTasked().get(worker).size();
+                ConcurrentHashMap<AID, Integer> workers = company.getWorkers();
 
-                for (AID w : workers) {
 
+                AID worker = null;
+                Integer nOrders = null;
+
+                for (Map.Entry<AID, Integer> w : workers.entrySet()) {
+
+                    if (worker == null) {
+                        worker = w.getKey();
+                        nOrders = company.getOrdersTasked().get(worker).size();
+                    }
                     int size = company.getOrdersTasked().get(w).size();
 
                     if (size < nOrders) {
-                        worker = w;
+                        worker = w.getKey();
                         nOrders = size;
                     }
                 }
@@ -291,7 +352,6 @@ public class CompanyBehaviours {
             }
             Utils.print("Company configs: ");
             Utils.printCompany(company);
-
         }
     }
 
@@ -317,12 +377,12 @@ public class CompanyBehaviours {
             }*/
 
 
-
             int numberEmp = company.getWorkers().size();
             Utils.print(String.valueOf(numberEmp));
 
             if (company.getRangeEmployees()[1] > numberEmp) {
 
+                // TODO Need to understand what kind of worker should be hired
                 System.out.println("TRY HIRE WORKER");
                 Random rand = new Random();
                 int rate = rand.nextInt(600 - 300) + 300;
@@ -341,5 +401,6 @@ public class CompanyBehaviours {
             return false;
         }
     }
+
 
 }

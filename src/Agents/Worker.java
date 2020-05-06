@@ -3,6 +3,7 @@ package Agents;
 import Behaviours.WorkersBehaviours;
 import Utilities.Order;
 import Utilities.Utils;
+import Utilities.Utils.*;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.domain.DFService;
@@ -12,25 +13,44 @@ import jade.domain.FIPAException;
 
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class Worker extends Agent {
 
-    private int capacity = 0;
+public class Worker extends Agent {
     private int rate = 0;
     private int workingTime = 0;
-    private int capacityUsed = 0;
+    private int salary = 0;
+    TYPE_OF_WORKER type_of_worker = TYPE_OF_WORKER.NORMAL;
     private Order currentOrder = null;
     private LinkedBlockingQueue<Order> orders = new LinkedBlockingQueue<>();
     private AID company = null;
     private WorkersBehaviours manager = new WorkersBehaviours(this);
 
 
+
     @Override
     protected void setup() {
 
         Object[] args = getArguments();
-        if (args != null && args.length == 2) {
-            this.capacity = Integer.parseInt((String) args[0]); // work that it can handle
-            this.rate = Integer.parseInt((String) args[1]); // work rate - work per time unit
+        if (args != null && args.length == 1) {
+
+            TYPE_OF_WORKER worker_type = (TYPE_OF_WORKER) args[0];
+            switch (worker_type) {
+                case LAZY:
+                    this.rate = Utils.RATE_OF_LAZY_WORKER;
+                    this.salary = Utils.SALARY_OF_LAZY_WORKER;
+                    this.type_of_worker = TYPE_OF_WORKER.LAZY;
+                    break;
+                case NORMAL:
+                    this.rate = Utils.RATE_OF_NORMAL_WORKER;
+                    this.salary = Utils.SALARY_OF_NORMAL_WORKER;
+                    break;
+                case RENDER:
+                    this.rate = Utils.RATE_OF_RENDER_WORKER;
+                    this.salary = Utils.SALARY_OF_RENDER_WORKER;
+                    this.type_of_worker = TYPE_OF_WORKER.RENDER;
+                    break;
+                default:
+                    break;
+            }
 
         } else {
             doDelete();
@@ -78,9 +98,6 @@ public class Worker extends Agent {
         }
     }
 
-    public int getCapacity() {
-        return capacity;
-    }
 
     public void addOrder(Order o) {
         orders.add(o);
@@ -97,16 +114,8 @@ public class Worker extends Agent {
         return orders.remove(o);
     }
 
-    public void setCapacity(int capacity) {
-        this.capacity = capacity;
-    }
-
     public int getRate() {
         return rate;
-    }
-
-    public void setRate(int rate) {
-        this.rate = rate;
     }
 
     public int getWorkingTime() {
@@ -117,29 +126,18 @@ public class Worker extends Agent {
         this.workingTime += 1;
     }
 
-    public int getCapacityUsed() {
-        return capacityUsed;
-    }
-
-    public void setCapacityUsed(int capacityUsed) {
-        this.capacityUsed = capacityUsed;
-    }
-
     public LinkedBlockingQueue<Order> getOrders() {
         return orders;
-    }
-
-    public void setOrders(LinkedBlockingQueue<Order> orders) {
-        this.orders = orders;
     }
 
     public AID getCompany() {
         return company;
     }
 
-    public void setCompany(AID company) {
-        this.company = company;
+    public int getSalary() {
+        return salary;
     }
+
 
     public boolean isFull() {
         return orders.size() == 3;
@@ -153,4 +151,3 @@ public class Worker extends Agent {
         this.currentOrder = currentOrder;
     }
 }
-

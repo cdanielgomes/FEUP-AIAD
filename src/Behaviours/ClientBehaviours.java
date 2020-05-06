@@ -1,17 +1,11 @@
 package Behaviours;
 
 import Agents.Client;
-import Utilities.Utils;
 import jade.core.Agent;
 import jade.core.behaviours.*;
-import jade.domain.FIPANames;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
-import jade.proto.SimpleAchieveREInitiator;
-
 import java.io.IOException;
-import java.util.Date;
-import java.util.Hashtable;
 
 public class ClientBehaviours {
 

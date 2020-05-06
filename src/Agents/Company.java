@@ -10,21 +10,21 @@ import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
-import jdk.jshell.execution.Util;
 
-import java.util.Hashtable;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 public class Company extends Agent {
 
-    private Vector<AID> workers = new Vector<>();
-    private Hashtable<AID, Vector<Order>> ordersTask = new Hashtable<>();
+    private ConcurrentHashMap<AID, Integer> workers = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<AID, Vector<Order>> ordersTask = new ConcurrentHashMap<>();
     private double cash = 0;
     private double lostCash = 0;
     private double payments = 0;
-    private double payment = 0;
     private int[] rangeEmployees = {0, 0};
+    private ConcurrentSkipListSet<Order> monthOrders = new ConcurrentSkipListSet<>();
     private CompanyBehaviours manager;
     private boolean addedWorker = false;
 
@@ -35,7 +35,6 @@ public class Company extends Agent {
 
         if (args != null && args.length == 3) {
             try {
-                this.payment = Double.parseDouble((String) args[0]); // work that it can handle
                 this.rangeEmployees[0] = Integer.parseInt((String) args[1]);
                 this.rangeEmployees[1] = Integer.parseInt((String) args[2]);
             } catch (Exception e) {
@@ -64,7 +63,7 @@ public class Company extends Agent {
             addBehaviour(manager.new ReceiveWorkers());
             addBehaviour(manager.new WarnClients());
 
-            addBehaviour(manager.new PayEmployees(30 * 1000, this.payment));
+            addBehaviour(manager.new PayEmployees(Utils.MONTH_IN_MILLISECONDS));
 
         } catch (FIPAException e) {
 
@@ -74,10 +73,11 @@ public class Company extends Agent {
     }
 
 
-    public void addWorker(AID worker) {
-        workers.add(worker);
+    public void addWorker(AID worker, int salary) {
+        workers.put(worker, salary);
         ordersTask.put(worker, new Vector<>());
         addedWorker = false;
+        payments += salary;
     }
 
     public AID removeOrder(Order order, boolean cancelled) {
@@ -93,7 +93,7 @@ public class Company extends Agent {
                     if (o.getAid().equals(order.getAid())) {
 
                         orders.remove(o);
-                        if(cancelled) {
+                        if (cancelled) {
                             Utils.print("Order removed " + o.getAid().getLocalName());
                             Utils.print("Payment of  " + o.getPayment());
                             Utils.print("Was on worker " + worker.getLocalName());
@@ -114,6 +114,7 @@ public class Company extends Agent {
         try {
             Vector<Order> o = ordersTask.get(worker);
             o.add(order);
+
             ordersTask.put(worker, o);
 
         } catch (NullPointerException e) {
@@ -138,9 +139,8 @@ public class Company extends Agent {
     public boolean removeWorker(AID worker) {
         try {
             if (workers.size() > rangeEmployees[0]) {
-
-                if (this.workers.remove(worker)) {
-
+                Integer salary =  workers.remove(worker);
+                if (salary != null) {
                     Vector<Order> orders = this.ordersTask.get(worker);
                     if (orders.size() > 0) {
                         for (Order o : orders) {
@@ -148,6 +148,7 @@ public class Company extends Agent {
                         }
                     }
                     Vector a = ordersTask.remove(worker);
+                    payments -= salary;
 
                 } else return false;
             } else return false;
@@ -159,37 +160,34 @@ public class Company extends Agent {
 
     }
 
-    public Vector<AID> getWorkers() {
+    public ConcurrentHashMap<AID, Integer> getWorkers() {
         return workers;
     }
 
-    public void setWorkers(Vector<AID> workers) {
-        this.workers = workers;
-    }
-
-    public Hashtable<AID, Vector<Order>> getOrdersTasked() {
+    public ConcurrentHashMap<AID, Vector<Order>> getOrdersTasked() {
         return ordersTask;
-    }
-
-    public void setOrdersTasked(Hashtable<AID, Vector<Order>> ordersTasked) {
-        this.ordersTask = ordersTasked;
     }
 
     public double getCash() {
         return cash;
     }
 
-    public void setCash(int cash) {
-        this.cash = cash;
+    public double getPayments() {
+        return payments;
     }
 
-    public double getPayment() {
-        return payment;
-    }
+    public double payEmployees() {
+        int pieces = 0;
+        double earns = 0;
 
-    public void payEmployees(int nEmployees) {
-        this.cash -= nEmployees * this.payment;
-        this.payments += nEmployees * this.payment;
+        for (Order o : monthOrders) {
+            pieces += o.getQuantity();
+            earns += o.getPayment();
+        }
+        double wastes = this.payments + Utils.PERCENTAGE_OF_WASTES * pieces;
+        this.cash -= wastes;
+        monthOrders.clear();
+        return wastes;
     }
 
     public int[] getRangeEmployees() {
@@ -203,4 +201,6 @@ public class Company extends Agent {
     public void setAddedWorker(boolean addedWorker) {
         this.addedWorker = addedWorker;
     }
+
+
 }

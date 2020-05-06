@@ -36,7 +36,7 @@ public class WorkersBehaviours {
         public void action() {
             ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
             msg.addReceiver(worker.getCompany());
-            msg.setContent("worker");
+            msg.setContent("worker hired" + worker.getSalary());
             worker.send(msg);
             MessageTemplate template = MessageTemplate.and(
                     MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
@@ -54,9 +54,10 @@ public class WorkersBehaviours {
         public void action() {
             MessageTemplate tmp = MessageTemplate.MatchPerformative(ACLMessage.CANCEL);
             MessageTemplate with_inform = MessageTemplate.or(tmp, MessageTemplate.MatchPerformative(ACLMessage.INFORM));
-
             ACLMessage msg = worker.receive(with_inform);
             if (msg != null) {
+                System.out.println("FIRE WORK");
+
                 if (msg.getPerformative() == ACLMessage.CANCEL) {
                     worker.doDelete();
                 } else {
@@ -88,7 +89,7 @@ public class WorkersBehaviours {
 
                 Order o = (Order) cfp.getContentObject();
 
-                if (worker.getCapacity() < o.getQuantity() || worker.isFull()) {
+                if (worker.isFull()) {
                     reply.setPerformative(ACLMessage.REFUSE);
 
                 } else {
@@ -125,7 +126,7 @@ public class WorkersBehaviours {
     public class DoMyJob extends TickerBehaviour {
 
         public DoMyJob() {
-            super(worker, 500);
+            super(worker, Utils.DAY_IN_MILLISECONDS);
         }
 
         @Override

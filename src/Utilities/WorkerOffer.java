@@ -1,30 +1,27 @@
 package Utilities;
 
 import Agents.Worker;
+
 import java.io.Serializable;
 
 public class WorkerOffer implements Serializable {
 
 
-    private int capacity = 0;
     private float rate = 0;
     private int workingTime = 0;
     private int nOrders = 0;
     private boolean working = false;
     private boolean full = false;
+    private int salary = 0;
 
 
     public WorkerOffer(Worker w) {
-        this.capacity = w.getCapacity();
         this.rate = w.getRate();
         this.workingTime = w.getWorkingTime();
         this.working = w.getCurrentOrder() != null;
         this.full = w.isFull();
         this.nOrders = w.getOrders().size();
-    }
-
-    public int getCapacity() {
-        return capacity;
+        this.salary = w.getSalary();
     }
 
     public float getRate() {
@@ -45,6 +42,10 @@ public class WorkerOffer implements Serializable {
 
     public int getnOrders() {
         return nOrders;
+    }
+
+    public int getSalary() {
+        return salary;
     }
 
     public void setnOrders(int nOrders) {
