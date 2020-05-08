@@ -32,6 +32,7 @@ public class Company extends Agent {
     private boolean addedWorker = false;
     private Order savedWork = null;
     private AID savedAID = null;
+    private int currentDay = 0;
 
 
     @Override
@@ -70,6 +71,7 @@ public class Company extends Agent {
             addBehaviour(manager.new WarnClients());
 
             addBehaviour(manager.new PayEmployees(Utils.MONTH_IN_MILLISECONDS));
+            addBehaviour(manager.new  EndOfPeriodToSupportDebit());
 
         } catch (FIPAException e) {
 
@@ -104,9 +106,12 @@ public class Company extends Agent {
 
                         orders.remove(o);
                         if (cancelled) {
-                            Utils.print("Order removed " + o.getAid().getLocalName());
-                            Utils.print("Payment of  " + o.getPayment());
-                            Utils.print("Was on worker " + worker.getLocalName());
+                            System.out.println("///// ORDER CANCELED /////");
+                            System.out.println("Order removed " + o.getAid().getLocalName());
+                            System.out.println("Payment of  " + o.getPayment());
+                            System.out.println("Was on worker " + worker.getLocalName());
+                            System.out.println("///// ---- ORDER CANCELED /////");
+
                         }
                         ordersTask.put(worker, orders);
                         return worker;
@@ -230,5 +235,16 @@ public class Company extends Agent {
 
     public double getPayments() {
         return payments;
+    }
+
+    public int getCurrentDay() {
+            return currentDay;
+    }
+
+    public void updateDay(){
+        this.currentDay++;
+    }
+    public void resetDay(){
+        this.currentDay = 0;
     }
 }

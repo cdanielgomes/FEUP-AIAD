@@ -87,11 +87,11 @@ public class Client extends Agent {
     private Order calculateWaitingTime(int quantity) {
 
         int timeout = 0;
-        double payment = 1.5 * quantity;
+        double payment = 2.5 * quantity;
 
         switch (client) {
             case NOPATIENT:
-                timeout = (int) Math.ceil(1.5 * quantity / MEDIUM_PIECES_DAY);
+                timeout = (int) Math.ceil(1.7 * quantity / MEDIUM_PIECES_DAY);
                 break;
             case PATIENT:
                 timeout = (int) Math.ceil(3.3 * quantity / MEDIUM_PIECES_DAY);

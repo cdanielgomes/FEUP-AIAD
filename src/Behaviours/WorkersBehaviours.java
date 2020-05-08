@@ -59,9 +59,10 @@ public class WorkersBehaviours {
             MessageTemplate last = MessageTemplate.and(with_inform, MessageTemplate.not(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET)));
             ACLMessage msg = worker.receive(last);
             if (msg != null) {
-                System.out.println("FIRE WORK");
 
                 if (msg.getPerformative() == ACLMessage.CANCEL) {
+                    System.out.println("FIRE WORK");
+
                     worker.doDelete();
                 } else {
                     try {
@@ -92,13 +93,9 @@ public class WorkersBehaviours {
 
                 Order o = (Order) cfp.getContentObject();
 
-                if (worker.isFull()) {
-                    reply.setPerformative(ACLMessage.REFUSE);
+                reply.setPerformative(ACLMessage.PROPOSE);
+                reply.setContentObject(new WorkerOffer(worker));
 
-                } else {
-                    reply.setPerformative(ACLMessage.PROPOSE);
-                    reply.setContentObject(new WorkerOffer(worker));
-                }
             } catch (UnreadableException | IOException e) {
                 Utils.print("ERROR TRYING WORK ANSWER");
                 e.printStackTrace();
@@ -113,7 +110,7 @@ public class WorkersBehaviours {
 
             try {
                 worker.addOrder((Order) cfp.getContentObject());
-                Utils.print("ADDED JOB to " + worker.getLocalName());
+                System.out.println(worker.getLocalName() + " received a job");
             } catch (UnreadableException e) {
                 e.printStackTrace();
             }
@@ -122,6 +119,12 @@ public class WorkersBehaviours {
             reply.setPerformative(ACLMessage.INFORM);
             reply.setContent("added job");
             return reply;
+        }
+
+
+        @Override
+        protected void handleRejectProposal(ACLMessage cfp, ACLMessage propose, ACLMessage reject) {
+
         }
     }
 
@@ -178,7 +181,6 @@ public class WorkersBehaviours {
                 try {
 
                     worker.addOrder((Order) msg.getContentObject());
-                    Utils.print("ADDED RANDOMLY JOB to " + worker.getLocalName());
                 } catch (UnreadableException e) {
                     e.printStackTrace();
                 }

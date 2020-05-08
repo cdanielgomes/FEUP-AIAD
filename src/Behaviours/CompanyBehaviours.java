@@ -17,6 +17,7 @@ import jade.lang.acl.UnreadableException;
 import jade.proto.ContractNetInitiator;
 import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
+import jdk.jshell.execution.Util;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.io.IOException;
@@ -52,7 +53,8 @@ public class CompanyBehaviours {
                         company.addWorker(msg.getSender(), salary);
 
                     } else {
-                        Utils.print(msg.getContent());
+                        // Receive a leaving
+                        /// Utils.print(msg.getContent());
                     }
 
                 } catch (Exception e) {
@@ -119,7 +121,9 @@ public class CompanyBehaviours {
                             Order o = (Order) msg.getContentObject();
                             company.receivePayment(o);
 
-                            Utils.printCompany(company);
+                            System.out.println("///// RECEIVE PAYMENT /////");
+                            System.out.println("Client " + msg.getSender().getLocalName() + " paid " + o.getPayment());
+                            System.out.println("----- RECEIVE PAYMENT -----");
 
                         } catch (UnreadableException e) {
                             e.printStackTrace();
@@ -212,6 +216,11 @@ public class CompanyBehaviours {
 
             } else {
 
+                for (Object i : responses) {
+                    ACLMessage rp = ((ACLMessage) i).createReply();
+                    rp.setPerformative(ACLMessage.REJECT_PROPOSAL);
+                    acceptances.add(rp);
+                }
                 System.out.println("/////////////////////////////");
                 System.out.println("// Offer Type : " + order.getType_of_client() + "/////");
                 System.out.println("/////////////////////////////");
@@ -219,25 +228,44 @@ public class CompanyBehaviours {
                     System.out.println(k.getKey().getLocalName() + " has this number of orders: " + k.getValue().size());
                 }
 
-                if (company.isAddedWorker()) {
+
+                if (responses.size() == 0) {
+                    System.out.println("TOU A 0's");
+                } else if (company.isAddedWorker()) {
                     if (company.getLostClients().get(order.getAid()) != null) {
-                        company.removeBehaviour(this);
+                       company.removeBehaviour(this);
                         return;
                     }
                     company.addBehaviour(new AssignWork(order, new ACLMessage(ACLMessage.CFP)));
+
+
                 } else {
-                    Utils.print("Creating Worker");
+                    System.out.println("----------- Worker Created -----------");
                     company.setSavedWork(order);
                     createWorker(order);
                 }
-                company.removeBehaviour(this);
+
             }
+
+
+        }
+
+
+        @Override
+        protected void handleInform(ACLMessage inform) {
+            Utils.print(inform.getContent());
+        }
+
+        @Override
+        protected void handleFailure(ACLMessage failure) {
+            Utils.print(failure.getContent());
+
         }
 
         private ACLMessage getWorkerAssigned(Vector responses, Order order) {
             ACLMessage offer = null;
             WorkerOffer workerOffer = null;
-            Integer timeToEndOffer = null;
+            Double timeToEndOffer = null;
             System.out.println("//////////////////////////////////////");
             System.out.println("///// Order Type: " + order.getType_of_client() + " ////////////");
             System.out.println("//////////////////////////////////////");
@@ -249,7 +277,7 @@ public class CompanyBehaviours {
                     try {
                         WorkerOffer w = (WorkerOffer) ((ACLMessage) i).getContentObject();
 
-                        Integer time = calculateWaitingTime(((ACLMessage) i).getSender());
+                        Double time = calculateWaitingTime(((ACLMessage) i).getSender());
 
                         System.out.println("|||||||||| Worker |||||||||||||");
                         System.out.println("Para o worker " + ((ACLMessage) i).getSender().getLocalName() + " o tempo da order é " + time);
@@ -343,24 +371,49 @@ public class CompanyBehaviours {
             return w.getSalary() == Utils.SALARY_OF_NORMAL_WORKER;
         }
 
-        int calculateWaitingTime(AID worker) {
-            int sum = 0;
+        double calculateWaitingTime(AID worker) {
+            double sum = 0;
 
             Integer c = company.getWorkers().get(worker);
-            int qt;
-            if (c == Utils.SALARY_OF_LAZY_WORKER) qt = Utils.RATE_OF_LAZY_WORKER;
-            else if (c == Utils.SALARY_OF_RENDER_WORKER) qt = Utils.RATE_OF_RENDER_WORKER;
-            else qt = Utils.RATE_OF_NORMAL_WORKER;
 
+            int qt = workerRate(c);
             sum += order.getQuantity() * Utils.DAY_IN_MILLISECONDS / qt;
 
             for (Order order : company.getOrdersTasked().get(worker)) {
 
-                sum += order.getQuantity() * Utils.DAY_IN_MILLISECONDS / qt;
+                sum += timeEndOrder(qt, order);
             }
             return sum;
         }
+    }
 
+    int workerRate(int c) {
+        int qt;
+        if (c == Utils.SALARY_OF_LAZY_WORKER) qt = Utils.RATE_OF_LAZY_WORKER;
+        else if (c == Utils.SALARY_OF_RENDER_WORKER) qt = Utils.RATE_OF_RENDER_WORKER;
+        else qt = Utils.RATE_OF_NORMAL_WORKER;
+        return qt;
+    }
+
+    int timeEndOrder(int rate, Order o) {
+        return o.getQuantity() * Utils.DAY_IN_MILLISECONDS / rate;
+    }
+
+    public double checkMoney(Order o) {
+        int money = 0;
+
+        for (Map.Entry<AID, Vector<Order>> k : company.getOrdersTasked().entrySet()) {
+            int time_to_end_of_month = (Utils.DEBIT_TIME_SPAN_IN_DAYS - company.getCurrentDay()) * Utils.DAY_IN_MILLISECONDS;
+            double current = 0;
+            for (Order order : k.getValue()) {
+                double tmp = timeEndOrder(workerRate(company.getWorkers().get(k.getKey())), order);
+                if (current + tmp <= time_to_end_of_month) {
+                    money += order.getPayment();
+                    current += tmp;
+                } else break;
+            }
+        }
+        return money + (o == null ? 0 : o.getPayment());
     }
 
     public class PayEmployees extends TickerBehaviour {
@@ -374,57 +427,65 @@ public class CompanyBehaviours {
 
             double pay = company.payEmployees();
             try {
+                if (company.getCash() + checkMoney(null) < -1 * Utils.DEBIT_MARGE && company.getWorkers().size() > company.getRangeEmployees()[0]) {
+                    System.out.println("//////// FIRING //////");
+                    System.out.println("Actual Cash " + company.getCash());
+                    System.out.println("Number of Workers " + company.getWorkers().size());
+                    System.out.println("---------- FIRING --------");
 
-
-                if (company.getCash() < pay && company.getWorkers().size() > company.getRangeEmployees()[0]) {
-                    Utils.print(company.getCash() + " <- Cash");
-                    Utils.print(company.getWorkers().size() + " <- Number of Workers");
-                    Utils.print(company.getRangeEmployees()[0] + " <-  Minimum of Workers");
                     ConcurrentHashMap<AID, Integer> workers = company.getWorkers();
-
 
                     AID worker = null;
                     Integer nOrders = null;
+                    Set<AID> aids = new HashSet<>();
 
-                    for (Map.Entry<AID, Integer> w : workers.entrySet()) {
-                        if (worker == null) {
-                            worker = w.getKey();
-                            nOrders = company.getOrdersTasked().get(worker).size();
+                    double money = company.getPayments();
+
+                    while (checkMoney(null) < money) {
+
+                        for (Map.Entry<AID, Integer> w : workers.entrySet()) {
+                            if (worker == null && !aids.contains(w.getKey())) {
+                                worker = w.getKey();
+                                nOrders = company.getOrdersTasked().get(worker).size();
+                            }
+
+                            int size = company.getOrdersTasked().get(w.getKey()).size();
+                            if (nOrders == null) break;
+                            if (nOrders == 0 && !aids.contains(w.getKey())) {
+                                worker = w.getKey();
+                                nOrders = size;
+                            }
                         }
 
-                        int size = company.getOrdersTasked().get(w.getKey()).size();
+                        if (worker == null) break;
+                        aids.add(worker);
+                        money -= workers.get(worker);
+                        worker = null;
+                        nOrders = null;
 
-                        if (size < nOrders) {
-                            worker = w.getKey();
-                            nOrders = size;
+                    }
+
+                    for (AID w : aids) {
+                        if (company.removeWorker(w)) {
+                            ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
+                            msg.addReceiver(w);
+                            company.send(msg);
+                            System.out.println("Removed Worker cause no money to him");
                         }
                     }
 
-                    if (company.removeWorker(worker)) {
-
-                        ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
-                        msg.addReceiver(worker);
-                        company.send(msg);
-                        System.out.println("Removed Worker cause no money to him");
-                    }
                 }
-                Utils.print("Company configs: ");
+
+                System.out.println("////// COMPANY CONFIGURATIONS - END MONTH ////////");
                 Utils.printCompany(company);
+                System.out.println("------ COMPANY CONFIGURATIONS - - END MONTH --------");
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
 
-    public double checMoney(Order o) {
-        int money = 0;
-        for (Map.Entry<AID, Vector<Order>> k : company.getOrdersTasked().entrySet()) {
-            for (Order order : k.getValue()) {
-                money += order.getPayment();
-            }
-        }
-        return money + o.getPayment();
-    }
 
     public void createWorker(Order order) {
         try {
@@ -433,7 +494,7 @@ public class CompanyBehaviours {
             int numberEmp = company.getWorkers().size();
 
 
-            if (company.getRangeEmployees()[1] > numberEmp && checMoney(order) + company.getCash() > company.getPayments()) {
+            if (checkMoney(order) + company.getCash() - company.getPayments() >= -1 * Utils.DEBIT_MARGE) {
 
                 ConcurrentSkipListSet<Order> orders = company.getMonthOrders();
                 int numberOfPatient = 0;
@@ -503,6 +564,22 @@ public class CompanyBehaviours {
         }
     }
 
+    public class EndOfPeriodToSupportDebit extends TickerBehaviour {
+
+        public EndOfPeriodToSupportDebit() {
+            super(company, Utils.DAY_IN_MILLISECONDS);
+        }
+
+        @Override
+        protected void onTick() {
+            if (company.getCurrentDay() < Utils.DEBIT_TIME_SPAN_IN_DAYS) {
+                company.updateDay();
+            } else {
+                company.resetDay();
+            }
+        }
+    }
+
     boolean isPatient(Order o) {
         return o.getType_of_client() == Utils.TYPE_OF_CLIENT.PATIENT;
     }
@@ -514,5 +591,6 @@ public class CompanyBehaviours {
     boolean isNormal(Order o) {
         return o.getType_of_client() == Utils.TYPE_OF_CLIENT.NORMAL;
     }
+
 
 }

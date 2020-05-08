@@ -22,6 +22,9 @@ public class Utils {
     public static int RATE_OF_NORMAL_WORKER = 43;
     public static int RATE_OF_LAZY_WORKER = 29;
     public static int RATE_OF_RENDER_WORKER = 77;
+    public static int DEBIT_MARGE = SALARY_OF_RENDER_WORKER;
+    public static int DEBIT_TIME_SPAN_IN_DAYS = 2 * DAYS_IN_A_MONTH;
+    public static int TIME_DEBIT_IN_MILLISECONDS = DEBIT_TIME_SPAN_IN_DAYS * DAY_IN_MILLISECONDS;
 
     public static void print(String msg) {
         System.out.println("Line Number: " + Thread.currentThread().getStackTrace()[2].getLineNumber() + "; File: " + Thread.currentThread().getStackTrace()[2].getFileName() + "; MSG: " + msg);
