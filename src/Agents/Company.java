@@ -10,6 +10,7 @@ import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
+import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.Set;
 import java.util.Vector;
@@ -20,6 +21,8 @@ public class Company extends Agent {
 
     private ConcurrentHashMap<AID, Integer> workers = new ConcurrentHashMap<>();
     private ConcurrentHashMap<AID, Vector<Order>> ordersTask = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<AID, Order> lostClients = new ConcurrentHashMap<>();
+
     private double cash = 0;
     private double lostCash = 0;
     private double payments = 0;
@@ -27,16 +30,19 @@ public class Company extends Agent {
     private ConcurrentSkipListSet<Order> monthOrders = new ConcurrentSkipListSet<>();
     private CompanyBehaviours manager;
     private boolean addedWorker = false;
+    private Order savedWork = null;
+    private AID savedAID = null;
+
 
     @Override
     protected void setup() {
 
         Object[] args = getArguments();
 
-        if (args != null && args.length == 3) {
+        if (args != null && args.length == 2) {
             try {
-                this.rangeEmployees[0] = Integer.parseInt((String) args[1]);
-                this.rangeEmployees[1] = Integer.parseInt((String) args[2]);
+                this.rangeEmployees[0] = Integer.parseInt((String) args[0]);
+                this.rangeEmployees[1] = Integer.parseInt((String) args[1]);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -76,12 +82,16 @@ public class Company extends Agent {
     public void addWorker(AID worker, int salary) {
         workers.put(worker, salary);
         ordersTask.put(worker, new Vector<>());
-        addedWorker = false;
+        if (addedWorker) {
+            savedAID = worker;
+            addBehaviour(manager.new SendSavedWork());
+            addedWorker = false;
+        }
         payments += salary;
     }
 
     public AID removeOrder(Order order, boolean cancelled) {
-
+        lostClients.put(order.getAid(),order);
         try {
             Set<AID> workers = ordersTask.keySet();
 
@@ -139,7 +149,7 @@ public class Company extends Agent {
     public boolean removeWorker(AID worker) {
         try {
             if (workers.size() > rangeEmployees[0]) {
-                Integer salary =  workers.remove(worker);
+                Integer salary = workers.remove(worker);
                 if (salary != null) {
                     Vector<Order> orders = this.ordersTask.get(worker);
                     if (orders.size() > 0) {
@@ -172,10 +182,6 @@ public class Company extends Agent {
         return cash;
     }
 
-    public double getPayments() {
-        return payments;
-    }
-
     public double payEmployees() {
         int pieces = 0;
         double earns = 0;
@@ -202,5 +208,27 @@ public class Company extends Agent {
         this.addedWorker = addedWorker;
     }
 
+    public ConcurrentSkipListSet<Order> getMonthOrders() {
+        return monthOrders;
+    }
 
+    public Order getSavedWork() {
+        return savedWork;
+    }
+
+    public void setSavedWork(Order savedWork) {
+        this.savedWork = savedWork;
+    }
+
+    public AID getSavedAID() {
+        return savedAID;
+    }
+
+    public ConcurrentHashMap<AID, Order> getLostClients() {
+        return lostClients;
+    }
+
+    public double getPayments() {
+        return payments;
+    }
 }

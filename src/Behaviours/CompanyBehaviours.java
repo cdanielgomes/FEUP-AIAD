@@ -1,13 +1,14 @@
 package Behaviours;
 
 import Agents.Company;
-import Agents.Worker;
 import Utilities.Order;
 import Utilities.Utils;
 import Utilities.WorkerOffer;
+import com.github.javafaker.Faker;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.FIPANames;
 import jade.lang.acl.ACLMessage;
@@ -16,6 +17,7 @@ import jade.lang.acl.UnreadableException;
 import jade.proto.ContractNetInitiator;
 import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
+import org.apache.commons.lang3.SerializationUtils;
 
 import java.io.IOException;
 import java.util.*;
@@ -37,17 +39,20 @@ public class CompanyBehaviours {
 
         @Override
         public void action() {
-            MessageTemplate template = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+            MessageTemplate performativeTemplate = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+            MessageTemplate protocolTemplate = MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+            MessageTemplate template = MessageTemplate.and(MessageTemplate.not(protocolTemplate), performativeTemplate);
             ACLMessage msg = company.receive(template);
 
             if (msg != null) {
                 try {
+                    if (msg.getContent().contains("worker hired")) {
 
-                    String worker = msg.getContent().substring(0, "hired worker".length());
-                    int salary = Integer.parseInt(msg.getContent().substring("hired worker".length()));
-                    if (worker.equals("hired worker")) company.addWorker(msg.getSender(), salary);
-                    else {
-                        System.out.println(msg.getContent());
+                        int salary = Integer.parseInt(msg.getContent().substring("worker hired".length()));
+                        company.addWorker(msg.getSender(), salary);
+
+                    } else {
+                        Utils.print(msg.getContent());
                     }
 
                 } catch (Exception e) {
@@ -93,8 +98,8 @@ public class CompanyBehaviours {
                     MessageTemplate.MatchPerformative(ACLMessage.CONFIRM));
 
             MessageTemplate tmp = MessageTemplate.or(template, MessageTemplate.MatchPerformative(ACLMessage.CANCEL));
-
-            ACLMessage msg = company.receive(tmp);
+            MessageTemplate important = MessageTemplate.and(MessageTemplate.not(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET)), tmp);
+            ACLMessage msg = company.receive(important);
 
             if (msg != null) {
 
@@ -185,7 +190,6 @@ public class CompanyBehaviours {
         protected void handleAllResponses(Vector responses, Vector acceptances) {
             ACLMessage offer = getWorkerAssigned(responses, order);
 
-
             if (offer != null) {
                 try {
                     for (Object i : responses) {
@@ -207,83 +211,136 @@ public class CompanyBehaviours {
                 }
 
             } else {
-                Utils.print("Check added Worker");
+
+                System.out.println("/////////////////////////////");
+                System.out.println("// Offer Type : " + order.getType_of_client() + "/////");
+                System.out.println("/////////////////////////////");
+                for (Map.Entry<AID, Vector<Order>> k : company.getOrdersTasked().entrySet()) {
+                    System.out.println(k.getKey().getLocalName() + " has this number of orders: " + k.getValue().size());
+                }
+
                 if (company.isAddedWorker()) {
-                    Utils.print("Worker had to be added or waiting for one");
+                    if (company.getLostClients().get(order.getAid()) != null) {
+                        company.removeBehaviour(this);
+                        return;
+                    }
                     company.addBehaviour(new AssignWork(order, new ACLMessage(ACLMessage.CFP)));
-                    company.removeBehaviour(this);
                 } else {
                     Utils.print("Creating Worker");
+                    company.setSavedWork(order);
                     createWorker(order);
                 }
+                company.removeBehaviour(this);
             }
         }
 
         private ACLMessage getWorkerAssigned(Vector responses, Order order) {
             ACLMessage offer = null;
             WorkerOffer workerOffer = null;
-            Integer timeToStarThisOffer = null;
+            Integer timeToEndOffer = null;
+            System.out.println("//////////////////////////////////////");
+            System.out.println("///// Order Type: " + order.getType_of_client() + " ////////////");
+            System.out.println("//////////////////////////////////////");
+            System.out.println("Tempo da order é " + order.getTimeout());
+
             for (Object i : responses) {
                 if (((ACLMessage) i).getPerformative() == ACLMessage.PROPOSE) {
 
                     try {
                         WorkerOffer w = (WorkerOffer) ((ACLMessage) i).getContentObject();
-                        if (w.isFull()) continue;
 
                         Integer time = calculateWaitingTime(((ACLMessage) i).getSender());
 
-                        // tudo o que passa aqui pode guardar e produzir
-                        // porem para otimizar os seguintes os pequenos devem fazer os trabalhos mais pequenos
-                        // os grandes devem fazer os trabalhos maiores
+                        System.out.println("|||||||||| Worker |||||||||||||");
+                        System.out.println("Para o worker " + ((ACLMessage) i).getSender().getLocalName() + " o tempo da order é " + time);
 
                         if (time < order.getTimeout()) {
-                            if(offer == null){
+                            if (offer == null) {
                                 offer = (ACLMessage) i;
                                 workerOffer = w;
-                                timeToStarThisOffer = time;
+                                timeToEndOffer = time;
+                                System.out.println("Salary do " + ((ACLMessage) i).getSender().getLocalName() + " é de " + w.getSalary());
+
                                 continue;
                             }
 
+                            System.out.println("Salary do " + ((ACLMessage) i).getSender().getLocalName() + " é de " + w.getSalary());
 
-                            if (order.getType_of_client() == Utils.TYPE_OF_CLIENT.NOPATIENT) {
-                                if(w.getSalary() > workerOffer.getSalary()){
-                                        
-                                }
 
-                            } else if (order.getType_of_client() == Utils.TYPE_OF_CLIENT.NORMAL) {
-
-                            } else {
-
+                            switch (order.getType_of_client()) {
+                                case PATIENT:
+                                    if ((isLazy(workerOffer) && isLazy(w) && time < timeToEndOffer) ||
+                                            (isNormal(workerOffer) && isNormal(w) && time < timeToEndOffer)) {
+                                        offer = (ACLMessage) i;
+                                        workerOffer = w;
+                                        timeToEndOffer = time;
+                                    } else if (!isLazy(workerOffer) && isLazy(w)) {
+                                        offer = (ACLMessage) i;
+                                        workerOffer = w;
+                                        timeToEndOffer = time;
+                                    } else if (!isLazy(workerOffer) && isNormal(w)) {
+                                        offer = (ACLMessage) i;
+                                        workerOffer = w;
+                                        timeToEndOffer = time;
+                                    }
+                                    break;
+                                case NORMAL:
+                                    if ((isNormal(workerOffer) && isNormal(w) && time < timeToEndOffer)) {
+                                        offer = (ACLMessage) i;
+                                        workerOffer = w;
+                                        timeToEndOffer = time;
+                                    } else if (!isNormal(workerOffer) && isNormal(w)) {
+                                        offer = (ACLMessage) i;
+                                        workerOffer = w;
+                                        timeToEndOffer = time;
+                                    } else if (!isNormal(workerOffer) && isLazy(w)) {
+                                        offer = (ACLMessage) i;
+                                        workerOffer = w;
+                                        timeToEndOffer = time;
+                                    }
+                                    break;
+                                case NOPATIENT:
+                                    if (isRender(workerOffer) && isRender(w) && time < timeToEndOffer) {
+                                        offer = (ACLMessage) i;
+                                        workerOffer = w;
+                                        timeToEndOffer = time;
+                                    } else if (!isRender(workerOffer) && isRender(w)) {
+                                        offer = (ACLMessage) i;
+                                        workerOffer = w;
+                                        timeToEndOffer = time;
+                                    } else if (!isRender(workerOffer) && isNormal(w)) {
+                                        offer = (ACLMessage) i;
+                                        workerOffer = w;
+                                        timeToEndOffer = time;
+                                    }
+                                    break;
                             }
+
                         }
 
-
-                        /*
-                        if (w.isFull()) continue;
-                        if (workerOffer == null) {
-                            offer = (ACLMessage) i;
-                            workerOffer = w;
-                            continue;
-                        }
-                        if ((!w.isWorking() && !workerOffer.isWorking()) || (w.isWorking() && workerOffer.isWorking())) {
-                            if (workerOffer.getnOrders() > w.getnOrders()) {
-                                offer = (ACLMessage) i;
-                                workerOffer = w;
-                            } else if (workerOffer.getWorkingTime() > w.getWorkingTime()) {
-                                offer = (ACLMessage) i;
-                                workerOffer = w;
-                            }
-                        } else if (workerOffer.isWorking() && !w.isWorking()) {
-                            offer = (ACLMessage) i;
-                            workerOffer = w;
-                        }*/
                     } catch (UnreadableException e) {
                         e.printStackTrace();
                     }
 
                 }
             }
+            System.out.println("///// FInd WHy /////");
+            System.out.println((offer == null ? "COSPE NULL" : offer.getSender().getLocalName() + " com um salario = " + company.getWorkers().get(offer.getSender())));
+
             return offer;
+        }
+
+        boolean isLazy(WorkerOffer w) {
+            return w.getSalary() == Utils.SALARY_OF_LAZY_WORKER;
+        }
+
+
+        boolean isRender(WorkerOffer w) {
+            return w.getSalary() == Utils.SALARY_OF_RENDER_WORKER;
+        }
+
+        boolean isNormal(WorkerOffer w) {
+            return w.getSalary() == Utils.SALARY_OF_NORMAL_WORKER;
         }
 
         int calculateWaitingTime(AID worker) {
@@ -316,91 +373,146 @@ public class CompanyBehaviours {
         protected void onTick() {
 
             double pay = company.payEmployees();
+            try {
 
 
-            if (company.getCash() < pay && company.getWorkers().size() > company.getRangeEmployees()[0]) {
-                Utils.print(company.getCash() + " <- Cash");
-                Utils.print(company.getWorkers().size() + " <- Number of Workers");
-                Utils.print(company.getRangeEmployees()[0] + " <-  Minimum of Workers");
-                ConcurrentHashMap<AID, Integer> workers = company.getWorkers();
+                if (company.getCash() < pay && company.getWorkers().size() > company.getRangeEmployees()[0]) {
+                    Utils.print(company.getCash() + " <- Cash");
+                    Utils.print(company.getWorkers().size() + " <- Number of Workers");
+                    Utils.print(company.getRangeEmployees()[0] + " <-  Minimum of Workers");
+                    ConcurrentHashMap<AID, Integer> workers = company.getWorkers();
 
 
-                AID worker = null;
-                Integer nOrders = null;
+                    AID worker = null;
+                    Integer nOrders = null;
 
-                for (Map.Entry<AID, Integer> w : workers.entrySet()) {
+                    for (Map.Entry<AID, Integer> w : workers.entrySet()) {
+                        if (worker == null) {
+                            worker = w.getKey();
+                            nOrders = company.getOrdersTasked().get(worker).size();
+                        }
 
-                    if (worker == null) {
-                        worker = w.getKey();
-                        nOrders = company.getOrdersTasked().get(worker).size();
+                        int size = company.getOrdersTasked().get(w.getKey()).size();
+
+                        if (size < nOrders) {
+                            worker = w.getKey();
+                            nOrders = size;
+                        }
                     }
-                    int size = company.getOrdersTasked().get(w).size();
 
-                    if (size < nOrders) {
-                        worker = w.getKey();
-                        nOrders = size;
+                    if (company.removeWorker(worker)) {
+
+                        ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
+                        msg.addReceiver(worker);
+                        company.send(msg);
+                        System.out.println("Removed Worker cause no money to him");
                     }
                 }
-
-                if (company.removeWorker(worker)) {
-
-                    ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
-                    msg.addReceiver(worker);
-                    company.send(msg);
-                    System.out.println("Removed Worker cause no money to him");
-                }
+                Utils.print("Company configs: ");
+                Utils.printCompany(company);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            Utils.print("Company configs: ");
-            Utils.printCompany(company);
         }
     }
 
+    public double checMoney(Order o) {
+        int money = 0;
+        for (Map.Entry<AID, Vector<Order>> k : company.getOrdersTasked().entrySet()) {
+            for (Order order : k.getValue()) {
+                money += order.getPayment();
+            }
+        }
+        return money + o.getPayment();
+    }
 
-    public boolean createWorker(Order order) {
+    public void createWorker(Order order) {
         try {
             company.setAddedWorker(true);
-
-            // TODO important thing, keep guys optimal
-/*
-            Vector<AID> aids = company.getWorkers();
-
-            for (AID w : aids){
-                if(company.getOrdersTasked().get(w).size() == 0){
-                    if (company.removeWorker(w)) {
-                        ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
-                        msg.addReceiver(w);
-                        company.send(msg);
-                        System.out.println("Removed Worker cause is doing nothing");
-                        break;
-                    }
-                }
-            }*/
-
-
+            Utils.TYPE_OF_WORKER workerType;
             int numberEmp = company.getWorkers().size();
-            Utils.print(String.valueOf(numberEmp));
 
-            if (company.getRangeEmployees()[1] > numberEmp) {
 
-                // TODO Need to understand what kind of worker should be hired
-                System.out.println("TRY HIRE WORKER");
-                Random rand = new Random();
-                int rate = rand.nextInt(600 - 300) + 300;
-                int cap = rand.nextInt(1000) + order.getQuantity();
+            if (company.getRangeEmployees()[1] > numberEmp && checMoney(order) + company.getCash() > company.getPayments()) {
+
+                ConcurrentSkipListSet<Order> orders = company.getMonthOrders();
+                int numberOfPatient = 0;
+                int numberOfNoPatient = 0;
+                int numberOfNormal = 0;
+
+                for (Order o : orders) {
+                    if (isNoPatient(o)) numberOfNoPatient++;
+                    else if (isPatient(o)) numberOfPatient++;
+                    else numberOfNormal++;
+                }
+
+
+                double media = orders.size() < 0 ? (0 * numberOfPatient + 1 * numberOfNormal + 2 *
+                        numberOfNoPatient) / orders.size() : 3;
+
+                if (isPatient(order)) {
+                    if (media > 0.7) workerType = Utils.TYPE_OF_WORKER.NORMAL;
+                    else workerType = Utils.TYPE_OF_WORKER.LAZY;
+                } else if (isNormal(order)) {
+                    if (media < 0.7) workerType = Utils.TYPE_OF_WORKER.LAZY;
+                    else if (media > 1.5) workerType = Utils.TYPE_OF_WORKER.RENDER;
+                    else workerType = Utils.TYPE_OF_WORKER.NORMAL;
+                } else {
+                    if (media > 1.3) workerType = Utils.TYPE_OF_WORKER.RENDER;
+                    else workerType = Utils.TYPE_OF_WORKER.NORMAL;
+                }
+
+                System.out.println("//////// Worker Creation ////////");
+                System.out.println("//////// Worker type: " + workerType);
+                System.out.println("//////// Order type: " + order.getType_of_client());
 
                 ContainerController cc = company.getContainerController();
-                AgentController ac = cc.createNewAgent("worker" + (numberEmp + 1),
-                        "Agents.Worker", new Object[]{cap + "", rate + ""});
+                AgentController ac = cc.createNewAgent("IM" + (new Faker()).name().name() + (numberEmp + 1),
+                        "Agents.Worker", new Object[]{workerType});
 
                 ac.start();
-            }
-            return true;
-        } catch (Exception e) {
 
-            // e.printStackTrace();
-            return false;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+
         }
     }
 
+    public class SendSavedWork extends OneShotBehaviour {
+
+        @Override
+        public synchronized void action() {
+
+            if (company.getSavedWork() != null) {
+                try {
+
+                    ACLMessage acl = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+                    acl.addReceiver(company.getSavedAID());
+                    acl.setContentObject(company.getSavedWork());
+                    company.addOrder(company.getSavedAID(), company.getSavedWork());
+                    company.send(acl);
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    boolean isPatient(Order o) {
+        return o.getType_of_client() == Utils.TYPE_OF_CLIENT.PATIENT;
+    }
+
+    boolean isNoPatient(Order o) {
+        return o.getType_of_client() == Utils.TYPE_OF_CLIENT.NOPATIENT;
+    }
+
+    boolean isNormal(Order o) {
+        return o.getType_of_client() == Utils.TYPE_OF_CLIENT.NORMAL;
+    }
 
 }

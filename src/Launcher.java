@@ -1,3 +1,5 @@
+import Utilities.Utils;
+import com.github.javafaker.Faker;
 import jade.Boot;
 import jade.core.Profile;
 import jade.core.ProfileImpl;
@@ -42,7 +44,7 @@ public class Launcher {
             case 4:
                 iClients = 0;
                 generateFewWorkersAndLotClients();
-                createClientsRandomly(15, 30, 25, 0.2);
+                createClientsRandomly(15, 30, 25, 34);
                 break;
 
             case 5:
@@ -76,7 +78,7 @@ public class Launcher {
         profile.setParameter(Profile.GUI, "true");
         mainContainer = runtime.createMainContainer(profile);
 
-        AgentController sniffer = mainContainer.createNewAgent("sniffer_name", "jade.tools.sniffer.Sniffer", new Object[]{"company;worker*;client*"});
+        AgentController sniffer = mainContainer.createNewAgent("sniffer_name", "jade.tools.sniffer.Sniffer", new Object[]{"company;IM*;client*"});
         sniffer.start();
 
         // createAgent("runner", "RunnerAgent", new Object[]{});
@@ -107,7 +109,7 @@ public class Launcher {
 
     public static void generateCompany() throws InterruptedException {
 
-        Object[] compArgs = {1200 + "", "" + 2, "" + 10};
+        Object[] compArgs = {"" + 2, "" + 10};
 
         // create company
 
@@ -190,15 +192,14 @@ public class Launcher {
 
     public static void generateWorkers(int maxWorkers) {
         Random rand = new Random();
-
+        Faker f = new Faker();
         for (int i = 0; i < maxWorkers; i++) {
 
-            int rate = rand.nextInt(600 - 300) + 300;
-            int cap = rand.nextInt(8000 - 3000) + 3000;
+            int type = rand.nextInt(3);
 
-            Object[] workArgs = {cap + "", rate + ""};
+            Object[] workArgs = {Utils.TYPE_OF_WORKER.values()[type]};
 
-            createAgent("worker" + i, "Worker", workArgs);
+            createAgent(  "IM"+f.name().fullName() + i, "Worker", workArgs);
         }
     }
 
@@ -207,11 +208,10 @@ public class Launcher {
 
         for (int i = starter; i < clients + starter; i++) {
 
-            int time = rand.nextInt(60000 - 40000) + 40000;
-            int quantity = rand.nextInt(5000 - 500) + 500;
-            double payment = priceRate * quantity;
+            int type = rand.nextInt(3) ;
+            int quantity = rand.nextInt(1000 - 100) + 100;
 
-            Object[] args = {time + "", "" + quantity, payment + ""};
+            Object[] args = {Utils.TYPE_OF_CLIENT.values()[type],quantity};
 
             createAgent("client" + i, "Client", args);
         }

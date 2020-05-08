@@ -30,7 +30,7 @@ public class Client extends Agent {
             this.order = calculateWaitingTime(quantity);
         } else {
 
-            System.out.println("Fail Loading Client " + getName());
+            System.out.println("Fail Loading Client " + getLocalName());
             return;
         }
 
@@ -59,7 +59,7 @@ public class Client extends Agent {
             addBehaviour(manager.new Request());
             addBehaviour(manager.new WaitOrder());
         } catch (FIPAException e) {
-            System.out.println("Error on registering Client " + getName());
+            System.out.println("Error on registering Client " + getLocalName());
             doDelete();
         }
 
@@ -73,7 +73,7 @@ public class Client extends Agent {
             fe.printStackTrace();
         }
 
-        System.out.println("Client " + getName() + " is being deleted");
+        System.out.println("Client " + getLocalName() + " is being deleted");
     }
 
     public Order getOrder() {

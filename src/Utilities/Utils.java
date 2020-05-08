@@ -37,8 +37,10 @@ public class Utils {
         ConcurrentHashMap<AID, Vector<Order>> g = comp.getOrdersTasked();
         Set<AID> keys = g.keySet();
         for (AID key : keys) {
-            System.out.println("AID: " + key.getName() + "; " + g.get(key).size());
+            System.out.println("Name: " + key.getLocalName() + "; " + g.get(key).size());
         }
 
     }
+
+
 }

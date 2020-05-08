@@ -45,6 +45,8 @@ public class WorkersBehaviours {
             worker.addBehaviour(new GetWork(template));
             worker.addBehaviour(new DoMyJob());
             worker.addBehaviour(new Fired());
+            worker.addBehaviour(new ReceiveJob());
+
         }
     }
 
@@ -52,9 +54,10 @@ public class WorkersBehaviours {
 
         @Override
         public void action() {
-            MessageTemplate tmp = MessageTemplate.MatchPerformative(ACLMessage.CANCEL);
-            MessageTemplate with_inform = MessageTemplate.or(tmp, MessageTemplate.MatchPerformative(ACLMessage.INFORM));
-            ACLMessage msg = worker.receive(with_inform);
+            MessageTemplate cancelPerf = MessageTemplate.MatchPerformative(ACLMessage.CANCEL);
+            MessageTemplate with_inform = MessageTemplate.or(cancelPerf, MessageTemplate.MatchPerformative(ACLMessage.INFORM));
+            MessageTemplate last = MessageTemplate.and(with_inform, MessageTemplate.not(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET)));
+            ACLMessage msg = worker.receive(last);
             if (msg != null) {
                 System.out.println("FIRE WORK");
 
@@ -110,7 +113,7 @@ public class WorkersBehaviours {
 
             try {
                 worker.addOrder((Order) cfp.getContentObject());
-                Utils.print("ADDED JOB to " + worker.getName());
+                Utils.print("ADDED JOB to " + worker.getLocalName());
             } catch (UnreadableException e) {
                 e.printStackTrace();
             }
@@ -157,6 +160,30 @@ public class WorkersBehaviours {
 
                     worker.setCurrentOrder(null);
                 }
+            }
+        }
+    }
+
+    public class ReceiveJob extends CyclicBehaviour {
+
+        @Override
+        public void action() {
+
+            MessageTemplate performativeTemplate = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
+            MessageTemplate protocolTemplate = MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+            MessageTemplate template = MessageTemplate.and(MessageTemplate.not(protocolTemplate), performativeTemplate);
+            ACLMessage msg = worker.receive(template);
+
+            if (msg != null) {
+                try {
+
+                    worker.addOrder((Order) msg.getContentObject());
+                    Utils.print("ADDED RANDOMLY JOB to " + worker.getLocalName());
+                } catch (UnreadableException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                block();
             }
         }
     }

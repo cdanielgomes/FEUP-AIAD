@@ -7,7 +7,7 @@ import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
 
-public class Order implements Serializable, Comparator {
+public class Order implements Serializable, Comparator, Cloneable {
 
 
     private final AID aid;
@@ -17,13 +17,15 @@ public class Order implements Serializable, Comparator {
     private final Utils.TYPE_OF_CLIENT type_of_client;
     private boolean done = false;
 
-    public Order(AID aid, int quantity, int timeout, double payment, Utils.TYPE_OF_CLIENT client) {
+    public Order(AID aid, int quantity, long timeout, double payment, Utils.TYPE_OF_CLIENT client) {
         this.aid = aid;
         this.quantity = quantity;
         this.timeout = timeout;
         this.payment = payment;
         this.type_of_client = client;
     }
+
+
 
     public void decreaseQt(int quantity){
             this.quantity-= quantity;
@@ -75,5 +77,6 @@ public class Order implements Serializable, Comparator {
     public int hashCode() {
         return Objects.hash(getAid(), getQuantity());
     }
+
 }
 

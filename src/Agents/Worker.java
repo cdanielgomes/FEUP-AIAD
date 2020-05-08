@@ -25,7 +25,6 @@ public class Worker extends Agent {
     private WorkersBehaviours manager = new WorkersBehaviours(this);
 
 
-
     @Override
     protected void setup() {
 
@@ -79,7 +78,7 @@ public class Worker extends Agent {
             addBehaviour(manager.new StartWork());
 
         } catch (FIPAException e) {
-            System.out.println("Error on registering Worker " + getName());
+            System.out.println("Error on registering Worker " + getLocalName());
             doDelete();
         }
 
@@ -92,7 +91,7 @@ public class Worker extends Agent {
 
         try {
             DFService.deregister(this);
-            System.out.println("    Shutting down Worker " + getName());
+            System.out.println("Shutting down Worker " + getLocalName());
         } catch (FIPAException e) {
             e.printStackTrace();
         }
