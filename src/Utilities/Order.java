@@ -7,7 +7,7 @@ import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
 
-public class Order implements Serializable, Comparator, Cloneable {
+public class Order implements Serializable, Comparator, Cloneable, Comparable {
 
 
     private final AID aid;
@@ -78,5 +78,10 @@ public class Order implements Serializable, Comparator, Cloneable {
         return Objects.hash(getAid(), getQuantity());
     }
 
+    @Override
+    public int compareTo(Object o) {
+        Order b = (Order) o;
+        return getAid().compareTo(b.getAid());
+    }
 }
 

@@ -23,17 +23,18 @@ public class Company extends Agent {
     private ConcurrentHashMap<AID, Vector<Order>> ordersTask = new ConcurrentHashMap<>();
     private ConcurrentHashMap<AID, Order> lostClients = new ConcurrentHashMap<>();
 
+    private double allEarnMoney = 0;
     private double cash = 0;
     private double lostCash = 0;
     private double payments = 0;
     private int[] rangeEmployees = {0, 0};
     private ConcurrentSkipListSet<Order> monthOrders = new ConcurrentSkipListSet<>();
     private CompanyBehaviours manager;
-    private boolean addedWorker = false;
+    private boolean addingWorker = false;
     private Order savedWork = null;
     private AID savedAID = null;
     private int currentDay = 0;
-
+    private ConcurrentSkipListSet<Order> waitOrders = new ConcurrentSkipListSet<>();
 
     @Override
     protected void setup() {
@@ -84,10 +85,10 @@ public class Company extends Agent {
     public void addWorker(AID worker, int salary) {
         workers.put(worker, salary);
         ordersTask.put(worker, new Vector<>());
-        if (addedWorker) {
+        if (addingWorker) {
             savedAID = worker;
             addBehaviour(manager.new SendSavedWork());
-            addedWorker = false;
+            setAddingWorkerToFalse();
         }
         payments += salary;
     }
@@ -106,6 +107,8 @@ public class Company extends Agent {
 
                         orders.remove(o);
                         if (cancelled) {
+                            waitOrders.remove(o);
+
                             System.out.println("///// ORDER CANCELED /////");
                             System.out.println("Order removed " + o.getAid().getLocalName());
                             System.out.println("Payment of  " + o.getPayment());
@@ -140,6 +143,8 @@ public class Company extends Agent {
     }
 
     public void receivePayment(Order o) {
+        monthOrders.add(o);
+        allEarnMoney+=o.getPayment();
         cash += o.getPayment();
     }
 
@@ -205,12 +210,21 @@ public class Company extends Agent {
         return this.rangeEmployees;
     }
 
-    public boolean isAddedWorker() {
-        return addedWorker;
+    public boolean isAddingWorker() {
+        return addingWorker;
     }
 
-    public void setAddedWorker(boolean addedWorker) {
-        this.addedWorker = addedWorker;
+    public void setAddingWorker(boolean addedWorker) {
+        this.addingWorker = addedWorker;
+    }
+
+    public void setAddingWorkerToFalse(){
+        for(Order or: waitOrders){
+            addBehaviour(manager.new AssignWork(or, new ACLMessage(ACLMessage.CFP)));
+        }
+        waitOrders.clear();
+        System.out.println("size: " + waitOrders.size());
+        this.addingWorker = false;
     }
 
     public ConcurrentSkipListSet<Order> getMonthOrders() {
@@ -246,5 +260,19 @@ public class Company extends Agent {
     }
     public void resetDay(){
         this.currentDay = 0;
+    }
+
+    public ConcurrentSkipListSet<Order> getWaitOrders() {
+        return waitOrders;
+    }
+
+    public void addOrderToWait(Order o){
+        System.out.println("ADDING ORDER");
+        waitOrders.add(o);
+        System.out.println("ORDER " + waitOrders.size());
+    }
+    
+    public double getAllEarnMoney() {
+        return allEarnMoney;
     }
 }

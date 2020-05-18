@@ -34,10 +34,7 @@ public class WorkersBehaviours {
 
         @Override
         public void action() {
-            ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
-            msg.addReceiver(worker.getCompany());
-            msg.setContent("worker hired" + worker.getSalary());
-            worker.send(msg);
+
             MessageTemplate template = MessageTemplate.and(
                     MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
                     MessageTemplate.MatchPerformative(ACLMessage.CFP));
@@ -46,6 +43,11 @@ public class WorkersBehaviours {
             worker.addBehaviour(new DoMyJob());
             worker.addBehaviour(new Fired());
             worker.addBehaviour(new ReceiveJob());
+
+            ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+            msg.addReceiver(worker.getCompany());
+            msg.setContent("worker hired" + worker.getSalary());
+            worker.send(msg);
 
         }
     }
@@ -82,7 +84,6 @@ public class WorkersBehaviours {
 
         public GetWork(MessageTemplate template) {
             super(worker, template);
-
         }
 
         @Override

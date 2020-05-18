@@ -115,7 +115,7 @@ public class Launcher {
 
         createAgent("company", "Company", compArgs);
 
-        Thread.sleep(2000);
+      //  Thread.sleep(1000);
 
     }
 
@@ -129,8 +129,6 @@ public class Launcher {
     public static void generateWorkersAndClientsLot() throws InterruptedException {
 
         generateCompany();
-        Thread.sleep(2000);
-
         generateWorkers(7);
 
         generateClients(25, 0, 1.5);
@@ -147,7 +145,7 @@ public class Launcher {
     public static void generateLotWorkersAndFewClients() throws InterruptedException {
 
         generateCompany();
-        Thread.sleep(2000);
+
 
         generateWorkers(10);
 
@@ -165,8 +163,6 @@ public class Launcher {
     public static void generateFewWorkersAndLotClients() throws InterruptedException {
 
         generateCompany();
-        Thread.sleep(2000);
-
         generateWorkers(4);
 
         generateClients(25,0, 1.5);
