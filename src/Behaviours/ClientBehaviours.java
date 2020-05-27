@@ -1,17 +1,20 @@
 package Behaviours;
 
 import Agents.Client;
+import Utilities.Logger;
+import Utilities.Utils;
 import jade.core.Agent;
 import jade.core.behaviours.*;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+
 import java.io.IOException;
 
 public class ClientBehaviours {
 
 
     private Client client;
-
+    private TickerBehaviour timeBehaviour = null;
 
     public ClientBehaviours(Agent client) {
         this.client = (Client) client;
@@ -29,6 +32,8 @@ public class ClientBehaviours {
                 client.send(msg);
                 client.addBehaviour(new WaitingTime());
 
+                // log stuff
+                client.setTime_waited(System.currentTimeMillis());
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -68,10 +73,13 @@ public class ClientBehaviours {
 
             ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
             msg.setContent("im going away");
+            Utils.messagePrint("left order", client.getLocalName() + " left \n");
             try {
                 msg.setContentObject(client.getOrder());
                 msg.addReceiver(client.getCompany());
-                client.send(msg);            // send message that is canceling the order and leaves
+                client.send(msg); // send message that is canceling the order and leaves
+                Logger.addClient(client.getOrder(),System.currentTimeMillis()- client.getTime_waited(), false); //
+
                 client.doDelete();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -102,11 +110,12 @@ public class ClientBehaviours {
                 try {
                     msg.setContentObject(client.getOrder());
                     client.send(msg);
+                    Logger.addClient(client.getOrder(), System.currentTimeMillis()-client.getTime_waited(), true); //
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 } finally {
                     client.doDelete();
-
                 }
 
             } else {
@@ -116,5 +125,7 @@ public class ClientBehaviours {
         }
 
     }
+
+
 
 }

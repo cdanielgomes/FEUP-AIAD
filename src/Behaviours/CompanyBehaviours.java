@@ -1,6 +1,7 @@
 package Behaviours;
 
 import Agents.Company;
+import Utilities.Logger;
 import Utilities.Order;
 import Utilities.Utils;
 import Utilities.WorkerOffer;
@@ -110,6 +111,8 @@ public class CompanyBehaviours {
                     case ACLMessage.CFP:
                         try {
                             Order o = (Order) msg.getContentObject();
+                            Logger.endInitialWorker = true;
+                            Utils.messagePrint("receive order", o.getAid().getLocalName() + "\nOrder type " + o.getType_of_client() + "\n");
 
                             if (company.isAddingWorker()) {
                                 company.addOrderToWait(o);
@@ -128,9 +131,7 @@ public class CompanyBehaviours {
                             Order o = (Order) msg.getContentObject();
                             company.receivePayment(o);
 
-                            System.out.println("///// RECEIVE PAYMENT /////");
-                            System.out.println("Client " + msg.getSender().getLocalName() + " paid " + o.getPayment());
-                            System.out.println("----- RECEIVE PAYMENT -----");
+                            Utils.messagePrint("receive payment", msg.getSender().getLocalName() + " paid " + o.getPayment());
 
                         } catch (UnreadableException e) {
                             e.printStackTrace();
@@ -153,7 +154,7 @@ public class CompanyBehaviours {
                             e.printStackTrace();
                         }
                         break;
-                    // send message to Worker Telling to stop doing its work and be available again
+
                     default:
                         break;
                 }
@@ -183,7 +184,6 @@ public class CompanyBehaviours {
                 cfp.addReceiver(workers.nextElement());
                 nSentMessages++;
             }
-            System.out.println("ON PREPARING CENAS " + nSentMessages);
 
             cfp.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
             cfp.setPerformative(ACLMessage.CFP);
@@ -203,16 +203,12 @@ public class CompanyBehaviours {
 
         @Override
         protected void handleAllResponses(Vector responses, Vector acceptances) {
-            System.out.println("RECEBI PROPOSTAS DE " + responses.size() + " WORKERS: ");
-            for (Object acl : responses) {
-                System.out.println("\t" + ((ACLMessage) acl).getSender().getLocalName());
-            }
-
-            ACLMessage offer = getWorkerAssigned(responses, order);
+           ACLMessage offer = getWorkerAssigned(responses, order);
 
             if (offer != null) {
                 try {
                     for (Object i : responses) {
+
                         ACLMessage rp = ((ACLMessage) i).createReply();
 
                         if (offer.equals(i)) {
@@ -237,7 +233,6 @@ public class CompanyBehaviours {
                     rp.setPerformative(ACLMessage.REJECT_PROPOSAL);
                     acceptances.add(rp);
                 }
-
                 if (company.isAddingWorker()) {
                     company.addOrderToWait(order);
                 } else {
@@ -247,7 +242,8 @@ public class CompanyBehaviours {
                     } else {
                         if (!createWorker(order)) {
                             company.addBehaviour(new AssignWork(order, new ACLMessage(ACLMessage.CFP)));
-                        } else System.out.println("----------- WORKER CREATION -----------");
+                        } else {
+                        }
                     }
                 }
 
@@ -259,14 +255,10 @@ public class CompanyBehaviours {
 
         @Override
         protected void handleInform(ACLMessage inform) {
-            Utils.print(inform.getContent());
+
+              //Utils.print(inform.getContent());
         }
 
-        @Override
-        protected void handleFailure(ACLMessage failure) {
-            Utils.print(failure.getContent());
-
-        }
 
         private ACLMessage getWorkerAssigned(Vector responses, Order order) {
             ACLMessage offer = null;
@@ -274,6 +266,7 @@ public class CompanyBehaviours {
             Double timeToEndOffer = null;
 
             for (Object i : responses) {
+
                 if (((ACLMessage) i).getPerformative() == ACLMessage.PROPOSE) {
 
                     try {
@@ -366,7 +359,7 @@ public class CompanyBehaviours {
             double sum = 0;
 
             Integer c = company.getWorkers().get(worker);
-
+            if (c == null) return Integer.MAX_VALUE;
             int qt = workerRate(c);
             sum += order.getQuantity() * Utils.DAY_IN_MILLISECONDS / qt;
 
@@ -394,7 +387,7 @@ public class CompanyBehaviours {
         double money = 0;
 
         for (Map.Entry<AID, Vector<Order>> k : company.getOrdersTasked().entrySet()) {
-            int time_to_end_of_month = (Utils.DEBIT_TIME_SPAN_IN_DAYS - company.getCurrentDay()) * Utils.DAY_IN_MILLISECONDS;
+            int time_to_end_of_month = o == null ? Utils.MONTH_IN_MILLISECONDS : (Utils.DEBIT_TIME_SPAN_IN_DAYS - company.getCurrentDay()) * Utils.DAY_IN_MILLISECONDS;
             double current = 0;
             int rate = workerRate(company.getWorkers().get(k.getKey()));
 
@@ -421,13 +414,13 @@ public class CompanyBehaviours {
         protected void onTick() {
 
             double pay = company.payEmployees();
+            Utils.printCompany(company);
+
             try {
 
-                System.out.println(company.getCash() + checkMoney(null));
-
-                if (company.getCash() + checkMoney(null) < -1 * Utils.DEBIT_MARGE && company.getWorkers().size() > company.getRangeEmployees()[0]) {
+                if (company.getCash() + checkMoney(null) - pay < 0 && company.getWorkers().size() > company.getRangeEmployees()[0]) {
                     System.out.println("//////// FIRING //////");
-                    System.out.println("Actual Cash " + company.getCash());
+                    System.out.println("Actual Cash " + company.getCash() + " and cash in production  " + checkMoney(null));
                     System.out.println("Number of Workers " + company.getWorkers().size());
 
                     ConcurrentHashMap<AID, Integer> workers = company.getWorkers();
@@ -436,30 +429,28 @@ public class CompanyBehaviours {
                     Integer nOrders = null;
                     Set<AID> aids = new HashSet<>();
 
-                    double money = company.getPayments();
+                    while (company.getCash() + checkMoney(null) < pay) {
 
-                    while (checkMoney(null) < money) {
-
-                        for (Map.Entry<AID, Integer> w : workers.entrySet()) {
+                        for (Map.Entry<AID, Integer> w : company.getWorkers().entrySet()) {
                             if (worker == null && !aids.contains(w.getKey())) {
                                 worker = w.getKey();
                                 nOrders = company.getOrdersTasked().get(worker).size();
-                            }
 
+                            } else continue;
                             int size = company.getOrdersTasked().get(w.getKey()).size();
-                            if (nOrders == null) break;
-                            if (nOrders == 0 && !aids.contains(w.getKey())) {
+
+                            if (nOrders > size || size == 0) {
                                 worker = w.getKey();
                                 nOrders = size;
                             }
                         }
 
                         if (worker == null) break;
-                        aids.add(worker);
-                        money -= workers.get(worker);
-                        worker = null;
-                        nOrders = null;
-
+                        if (aids.add(worker)) {
+                            pay -= workers.get(worker);
+                            worker = null;
+                            nOrders = null;
+                        }
                     }
 
                     for (AID w : aids) {
@@ -474,7 +465,6 @@ public class CompanyBehaviours {
 
                 }
 
-                Utils.printCompany(company);
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -485,16 +475,21 @@ public class CompanyBehaviours {
 
     public boolean createWorker(Order order) {
         try {
+            company.setAddingWorker(true);
+
             Utils.TYPE_OF_WORKER workerType;
             int numberEmp = company.getWorkers().size();
+            ConcurrentSkipListSet<Order> orders = company.getMonthOrders();
+
+
             double debit = checkMoney(order) + company.getCash() - company.getPayments();
 
-            if (debit >= Utils.DEBIT_MARGE) {
-                company.setAddingWorker(true);
+
+            if (debit >= Utils.SAFETY_NET) {
 
                 company.setSavedWork(order);
 
-                ConcurrentSkipListSet<Order> orders = company.getMonthOrders();
+
                 int numberOfPatient = 0;
                 int numberOfNoPatient = 0;
                 int numberOfNormal = 0;
@@ -505,9 +500,7 @@ public class CompanyBehaviours {
                     else numberOfNormal++;
                 }
 
-
-                double media = orders.size() < 0 ? (0 * numberOfPatient + 1 * numberOfNormal + 2 *
-                        numberOfNoPatient) / orders.size() : 3;
+                double media = orders.size() > 0 ? (numberOfNormal + 2 * numberOfNoPatient) / orders.size() : 3;
 
                 if (isPatient(order)) {
                     if (media > 0.7) workerType = Utils.TYPE_OF_WORKER.NORMAL;
@@ -521,21 +514,19 @@ public class CompanyBehaviours {
                     else workerType = Utils.TYPE_OF_WORKER.NORMAL;
                 }
 
-                System.out.println("//////// Worker Creation ////////");
-                System.out.println("//////// Worker type: " + workerType);
-                System.out.println("//////// Order type: " + order.getType_of_client());
 
-                if (debit - Utils.salary(workerType) > Utils.DEBIT_MARGE) {
-                    ContainerController cc = company.getContainerController();
-                    AgentController ac = cc.createNewAgent("IM_NEW_" + (new Faker()).name().name() + (numberEmp + 1),
-                            "Agents.Worker", new Object[]{workerType});
+                Utils.messagePrint("worker creation", "Worker type: " + workerType + "\nOrder type: " + order.getType_of_client() + "\nMedium Orders Month: " + media);
 
-                    ac.start();
-                    return true;
-                }
+                ContainerController cc = company.getContainerController();
+                AgentController ac = cc.createNewAgent("Worker [NEW] " + (new Faker()).name().name() + (numberEmp + 1),
+                        "Agents.Worker", new Object[]{workerType});
+
+                ac.start();
+                return true;
+
 
             } else {
-                System.out.println("CANT CREATE WORKER");
+                // System.out.println("^^^^^^^^^ CANT CREATE WORKER ^^^^^^^^^^^");
                 company.setAddingWorkerToFalse();
             }
         } catch (Exception e) {
@@ -555,7 +546,6 @@ public class CompanyBehaviours {
                     ACLMessage acl = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
                     acl.addReceiver(company.getSavedAID());
                     acl.setContentObject(company.getSavedWork());
-                    System.out.println(acl.getProtocol());
                     company.addOrder(company.getSavedAID(), company.getSavedWork());
                     company.send(acl);
 

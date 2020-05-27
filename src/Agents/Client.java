@@ -2,6 +2,7 @@ package Agents;
 
 import Behaviours.ClientBehaviours;
 import Utilities.Order;
+import Utilities.Utils;
 import Utilities.Utils.*;
 import jade.core.AID;
 import jade.core.Agent;
@@ -18,6 +19,7 @@ public class Client extends Agent {
     Order order;
     AID company;
     ClientBehaviours manager;
+    long time_waited = 0;
     TYPE_OF_CLIENT client = TYPE_OF_CLIENT.NORMAL;
 
     @Override
@@ -72,8 +74,6 @@ public class Client extends Agent {
         } catch (FIPAException fe) {
             fe.printStackTrace();
         }
-
-        System.out.println("Client " + getLocalName() + " is being deleted");
     }
 
     public Order getOrder() {
@@ -87,7 +87,7 @@ public class Client extends Agent {
     private Order calculateWaitingTime(int quantity) {
 
         int timeout = 0;
-        double payment = 2.5 * quantity;
+        double payment = Utils.PRICE_UNIT * quantity;
 
         switch (client) {
             case NOPATIENT:
@@ -105,6 +105,14 @@ public class Client extends Agent {
 
         timeout *=  DAY_IN_MILLISECONDS;
         return new Order(getAID(), quantity, timeout, payment, client);
+    }
+
+    public void setTime_waited(long time_waited) {
+        this.time_waited = time_waited;
+    }
+
+    public long getTime_waited() {
+        return time_waited;
     }
 }
 

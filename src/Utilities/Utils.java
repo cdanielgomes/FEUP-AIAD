@@ -26,8 +26,10 @@ public class Utils {
     public static int RATE_OF_LAZY_WORKER = 29;
     public static int RATE_OF_RENDER_WORKER = 77;
     public static int DEBIT_MARGE = 0 * SALARY_OF_RENDER_WORKER;
-    public static int DEBIT_TIME_SPAN_IN_DAYS = 2 * DAYS_IN_A_MONTH;
+    public static int DEBIT_TIME_SPAN_IN_DAYS = 2*DAYS_IN_A_MONTH;
     public static int TIME_DEBIT_IN_MILLISECONDS = DEBIT_TIME_SPAN_IN_DAYS * DAY_IN_MILLISECONDS;
+    public static int SAFETY_NET = 1500;
+    public static double PRICE_UNIT = 2;
 
     public static int salary(TYPE_OF_WORKER type) {
         switch (type) {
@@ -65,19 +67,27 @@ public class Utils {
         System.out.println("////// COMPANY CONFIGURATIONS - END MONTH ////////");
 
         System.out.println("\t Cash: " + comp.getCash());
-        System.out.println("\tLost Cash: " + comp.getLostCash());
+        System.out.println("\t Lost Cash: " + comp.getLostCash());
         System.out.println("\t Number of Workers is " + comp.getWorkers().size());
-        System.out.println("\t Size of tasks is " + comp.getOrdersTasked().size());
-        System.out.println("\t\t WORKERS: ");
+        System.out.println("\t Number of Workers is " + comp.getWorkers().size());
+
         ConcurrentHashMap<AID, Vector<Order>> g = comp.getOrdersTasked();
         Set<AID> keys = g.keySet();
-
-        for (AID key : keys) {
-            System.out.println("Worker : " + key.getLocalName() + "; " + g.get(key).size());
-        }
-
-        System.out.println("------ COMPANY CONFIGURATIONS - - END MONTH --------");
+        System.out.println("------ COMPANY CONFIGURATIONS - END MONTH --------");
     }
 
+    public static void messagePrint(String title, String body) {
+        System.out.println("\n//////// " + title.toUpperCase() + " ///////");
+        System.out.println(body);
+        messagePrintEnd(title);
+    }
+
+    public static void messagePrintEnd(String title){
+        System.out.println("-------- END OF " + title.toUpperCase() + " --------\n");
+    }
+
+    public static void printInitialStats (Company company){
+
+    }
 
 }

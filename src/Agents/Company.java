@@ -1,6 +1,7 @@
 package Agents;
 
 import Behaviours.CompanyBehaviours;
+import Utilities.Logger;
 import Utilities.Order;
 import Utilities.Utils;
 import jade.core.AID;
@@ -41,10 +42,12 @@ public class Company extends Agent {
 
         Object[] args = getArguments();
 
-        if (args != null && args.length == 2) {
+        if (args != null && args.length == 3) {
             try {
                 this.rangeEmployees[0] = Integer.parseInt((String) args[0]);
-                this.rangeEmployees[1] = Integer.parseInt((String) args[1]);
+                Utils.PERCENTAGE_OF_WASTES = Double.parseDouble((String) args[1]);
+                Utils.PRICE_UNIT = Double.parseDouble((String) args[2]);
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -72,7 +75,9 @@ public class Company extends Agent {
             addBehaviour(manager.new WarnClients());
 
             addBehaviour(manager.new PayEmployees(Utils.MONTH_IN_MILLISECONDS));
-            addBehaviour(manager.new  EndOfPeriodToSupportDebit());
+            addBehaviour(manager.new EndOfPeriodToSupportDebit());
+
+            Logger.initiateTimer();
 
         } catch (FIPAException e) {
 
@@ -81,8 +86,8 @@ public class Company extends Agent {
         }
     }
 
-
     public void addWorker(AID worker, int salary) {
+        Logger.addWorker(salary);
         workers.put(worker, salary);
         ordersTask.put(worker, new Vector<>());
         if (addingWorker) {
@@ -94,7 +99,7 @@ public class Company extends Agent {
     }
 
     public AID removeOrder(Order order, boolean cancelled) {
-        lostClients.put(order.getAid(),order);
+        lostClients.put(order.getAid(), order);
         try {
             Set<AID> workers = ordersTask.keySet();
 
@@ -109,11 +114,9 @@ public class Company extends Agent {
                         if (cancelled) {
                             waitOrders.remove(o);
 
-                            System.out.println("///// ORDER CANCELED /////");
-                            System.out.println("Order removed " + o.getAid().getLocalName());
-                            System.out.println("Payment of  " + o.getPayment());
-                            System.out.println("Was on worker " + worker.getLocalName());
-                            System.out.println("///// ---- ORDER CANCELED /////");
+
+                            Utils.messagePrint("order canceled", "Order removed " + o.getAid().getLocalName() + "\nPayment of  " + o.getPayment() + "\nWas on worker " + worker.getLocalName());
+
 
                         }
                         ordersTask.put(worker, orders);
@@ -144,7 +147,7 @@ public class Company extends Agent {
 
     public void receivePayment(Order o) {
         monthOrders.add(o);
-        allEarnMoney+=o.getPayment();
+        allEarnMoney += o.getPayment();
         cash += o.getPayment();
     }
 
@@ -200,9 +203,12 @@ public class Company extends Agent {
             pieces += o.getQuantity();
             earns += o.getPayment();
         }
+
         double wastes = this.payments + Utils.PERCENTAGE_OF_WASTES * pieces;
+
         this.cash -= wastes;
         monthOrders.clear();
+
         return wastes;
     }
 
@@ -218,12 +224,11 @@ public class Company extends Agent {
         this.addingWorker = addedWorker;
     }
 
-    public void setAddingWorkerToFalse(){
-        for(Order or: waitOrders){
+    public void setAddingWorkerToFalse() {
+        for (Order or : waitOrders) {
             addBehaviour(manager.new AssignWork(or, new ACLMessage(ACLMessage.CFP)));
         }
         waitOrders.clear();
-        System.out.println("size: " + waitOrders.size());
         this.addingWorker = false;
     }
 
@@ -252,13 +257,14 @@ public class Company extends Agent {
     }
 
     public int getCurrentDay() {
-            return currentDay;
+        return currentDay;
     }
 
-    public void updateDay(){
+    public void updateDay() {
         this.currentDay++;
     }
-    public void resetDay(){
+
+    public void resetDay() {
         this.currentDay = 0;
     }
 
@@ -266,12 +272,10 @@ public class Company extends Agent {
         return waitOrders;
     }
 
-    public void addOrderToWait(Order o){
-        System.out.println("ADDING ORDER");
+    public void addOrderToWait(Order o) {
         waitOrders.add(o);
-        System.out.println("ORDER " + waitOrders.size());
     }
-    
+
     public double getAllEarnMoney() {
         return allEarnMoney;
     }

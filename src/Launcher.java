@@ -8,13 +8,9 @@ import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
 import jade.wrapper.StaleProxyException;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
-
 public class Launcher {
 
 
@@ -22,7 +18,9 @@ public class Launcher {
     private static Profile profile;
     private static ContainerController mainContainer;
     static int iClients = 1;
-
+    private static double wastes = 0.07;
+    static int nWorker = 4;
+    static double price = 2;
     public static void main(String[] args) throws InterruptedException, StaleProxyException {
 
 
@@ -36,25 +34,17 @@ public class Launcher {
                 generateWorkersAndClientsLot();
                 break;
             case 2:
+                nWorker=7;
                 generateLotWorkersAndFewClients();
                 break;
             case 3:
+                nWorker = 2;
                 generateFewWorkersAndLotClients();
                 break;
             case 4:
                 iClients = 0;
                 generateFewWorkersAndLotClients();
-                createClientsRandomly(15, 30, 25, 34);
-                break;
-
-            case 5:
-                iClients = 0;
-                generateFewWorkersAndLotClients();
-                createClientsRandomly(25 , 40, 25, 1);
-                break;
-
-            case 6:
-                // create workers with low rate or capacity
+                createClientsRandomly(27, 25);
                 break;
 
             default:
@@ -75,11 +65,11 @@ public class Launcher {
         profile = new ProfileImpl();
         profile.setParameter(Profile.CONTAINER_NAME, "TestContainer");
         profile.setParameter(Profile.MAIN_HOST, "localhost");
-        profile.setParameter(Profile.GUI, "true");
+    //    profile.setParameter(Profile.GUI, "true");
         mainContainer = runtime.createMainContainer(profile);
 
-        AgentController sniffer = mainContainer.createNewAgent("sniffer_name", "jade.tools.sniffer.Sniffer", new Object[]{"company;IM*;client*"});
-        sniffer.start();
+        //AgentController sniffer = mainContainer.createNewAgent("sniffer_name", "jade.tools.sniffer.Sniffer", new Object[]{"company;Wo*;Client*"});
+        //sniffer.start();
 
         // createAgent("runner", "RunnerAgent", new Object[]{});
 
@@ -99,23 +89,21 @@ public class Launcher {
 
     public static void generateAgents() throws InterruptedException {
 
-        Random rand = new Random();
-
         generateCompany();
-        generateWorkers(3);
-        generateClients(2,0, 1.5);
+        generateWorkers();
+        generateClients(2);
     }
 
 
     public static void generateCompany() throws InterruptedException {
 
-        Object[] compArgs = {"" + 2, "" + 10};
+        Object[] compArgs = {"" + 1, wastes+"", price +""};
 
         // create company
 
         createAgent("company", "Company", compArgs);
 
-      //  Thread.sleep(1000);
+        //  Thread.sleep(1000);
 
     }
 
@@ -129,9 +117,9 @@ public class Launcher {
     public static void generateWorkersAndClientsLot() throws InterruptedException {
 
         generateCompany();
-        generateWorkers(7);
+        generateWorkers();
 
-        generateClients(25, 0, 1.5);
+        generateClients(25);
 
     }
 
@@ -147,9 +135,9 @@ public class Launcher {
         generateCompany();
 
 
-        generateWorkers(10);
+        generateWorkers();
 
-        generateClients(10, 0, 1.5);
+        generateClients(10);
     }
 
 
@@ -163,53 +151,53 @@ public class Launcher {
     public static void generateFewWorkersAndLotClients() throws InterruptedException {
 
         generateCompany();
-        generateWorkers(4);
 
-        generateClients(25,0, 1.5);
+        generateWorkers();
+
+        generateClients(25);
     }
 
     /**
      * Creates between 10 and 30 new Clients each x seconds after 20 seconds program's start
      *
-     * @param seconds
      */
-    public static void createClientsRandomly(int nMax, int seconds, int starter, double priceRate) {
-        ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-        executorService.scheduleAtFixedRate(() -> {
-                    Random n = new Random();
-                    int clients = n.nextInt(nMax - 10) + 10;
-                    generateClients(clients, starter+iClients, priceRate);
-                    iClients = clients;
-                }, 15, seconds, TimeUnit.SECONDS
-        );
-
+    public static void createClientsRandomly(int nMax, int starter) {
+        (new Timer()).schedule(new TimerTask() {
+           @Override
+           public void run() {
+               Random n = new Random();
+               int clients = n.nextInt(nMax - 10) + 10;
+               generateClients(clients);
+               iClients = clients + 1;
+           }
+       }, 20*1000,33*1000);
     }
 
 
-    public static void generateWorkers(int maxWorkers) {
+    public static void generateWorkers() {
         Random rand = new Random();
         Faker f = new Faker();
-        for (int i = 0; i < maxWorkers; i++) {
+        for (int i = 0; i < nWorker; i++) {
 
             int type = rand.nextInt(3);
 
             Object[] workArgs = {Utils.TYPE_OF_WORKER.values()[type]};
 
-            createAgent(  "IM"+f.name().fullName() + i, "Worker", workArgs);
+            createAgent("Worker " + f.name().fullName() + i, "Worker", workArgs);
         }
     }
 
-    public static void generateClients(int clients, int starter, double priceRate) {
+    public static void generateClients(int clients) {
         Random rand = new Random();
+        Faker f = new Faker();
 
-        for (int i = starter; i < clients + starter; i++) {
+        for (int i = 0; i < clients; i++) {
+            int type = rand.nextInt(3);
+            int quantity = rand.nextInt(2000 - 500) + 500;
 
-            int type = rand.nextInt(3) ;
-            int quantity = rand.nextInt(1000 - 100) + 100;
+            Object[] args = {Utils.TYPE_OF_CLIENT.values()[type], quantity};
 
-            Object[] args = {Utils.TYPE_OF_CLIENT.values()[type],quantity};
-
-            createAgent("client" + i, "Client", args);
+            createAgent("Client " + f.name().fullName() + i, "Client", args);
         }
     }
 

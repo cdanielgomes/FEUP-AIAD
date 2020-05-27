@@ -63,8 +63,6 @@ public class WorkersBehaviours {
             if (msg != null) {
 
                 if (msg.getPerformative() == ACLMessage.CANCEL) {
-                    System.out.println("FIRE WORK");
-
                     worker.doDelete();
                 } else {
                     try {
@@ -93,8 +91,12 @@ public class WorkersBehaviours {
                 reply = cfp.createReply();
 
                 Order o = (Order) cfp.getContentObject();
+                long time = (worker.getRate() * o.getTimeout())/Utils.DAY_IN_MILLISECONDS;;
+                for (Order l : worker.getOrders()) time += (worker.getRate() * l.getTimeout())/Utils.DAY_IN_MILLISECONDS;
 
-                reply.setPerformative(ACLMessage.PROPOSE);
+                if(time < o.getTimeout())
+                    reply.setPerformative(ACLMessage.PROPOSE);
+                else reply.setPerformative(ACLMessage.REFUSE);
                 reply.setContentObject(new WorkerOffer(worker));
 
             } catch (UnreadableException | IOException e) {
@@ -138,7 +140,6 @@ public class WorkersBehaviours {
 
         @Override
         protected void onTick() {
-
             if (worker.getCurrentOrder() == null) {
                 worker.setCurrentOrder(worker.getOrders().poll());
             }
